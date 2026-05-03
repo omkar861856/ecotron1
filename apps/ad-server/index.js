@@ -16,6 +16,7 @@ const MINIO_CONFIG = {
 
 // Clients
 let db, redis, minio;
+let isReady = false;
 
 // Initialization
 const init = async () => {
@@ -23,21 +24,21 @@ const init = async () => {
     // Mongo
     const client = await MongoClient.connect(MONGO_URI);
     db = client.db('ecotron');
-    console.log('[SYSTEM] MongoDB Connected');
-
+    
     // Redis
     redis = new Redis(REDIS_URL);
-    console.log('[SYSTEM] Redis Connected');
-
+    
     // MinIO
     minio = new Minio.Client(MINIO_CONFIG);
     const bucketExists = await minio.bucketExists('creatives');
     if (!bucketExists) {
       await minio.makeBucket('creatives', 'us-east-1');
-      console.log('[SYSTEM] MinIO Creative Bucket Created');
     }
+    
+    isReady = true;
+    console.log('[SYSTEM] Ad Server Core Ready');
   } catch (err) {
-    console.error('[SYSTEM] Init Failed:', err);
+    console.error('[SYSTEM] Init Failed, Retrying...', err.message);
     setTimeout(init, 5000);
   }
 };
@@ -45,6 +46,16 @@ const init = async () => {
 init();
 
 fastify.register(require('fastify-cors'), { origin: "*" });
+
+// Readiness Middleware
+fastify.addHook('onRequest', async (request, reply) => {
+  if (!isReady && request.url !== '/health') {
+    return reply.code(503).send({ error: 'Service Initializing' });
+  }
+});
+
+// Health Check
+fastify.get('/health', async () => ({ status: 'ok', ready: isReady }));
 
 // API: Register Campaign
 fastify.post('/api/campaigns', async (request, reply) => {
