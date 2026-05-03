@@ -75,5 +75,10 @@ jobs:
             chmod 600 traefik/acme.json
             
             docker network create web || true
+            
+            # Clean up conflicting legacy containers
+            docker stop traefik ecotron-landing ecotron-ad-server ecotron-dashboard ecotron-cdn ecotron-web || true
+            docker rm traefik ecotron-landing ecotron-ad-server ecotron-dashboard ecotron-cdn ecotron-web || true
+            
             docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose up -d --force-recreate --remove-orphans
