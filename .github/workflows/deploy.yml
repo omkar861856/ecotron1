@@ -17,7 +17,14 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
+          mkdir -p /home/${{ secrets.SERVER_USER }}/ecotron
           cd /home/${{ secrets.SERVER_USER }}/ecotron
-          git pull origin main
+          if [ ! -d ".git" ]; then
+            rm -rf ./*
+            git clone https://github.com/omkar861856/ecotron1.git .
+          else
+            git fetch --all
+            git reset --hard origin/main
+          fi
           docker network create ecotron-network || true
-          docker compose -f docker-compose.prod.yml up -d --build
+          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
