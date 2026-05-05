@@ -10,26 +10,16 @@ export default function Home() {
   const [quote, setQuote] = useState('');
   
   const [prompts, setPrompts] = useState<any[]>([]);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
   const [copyStatus, setCopyStatus] = useState('Copy');
 
-  const categories = [
-    { id: 'all', label: 'All', icon: '✨' },
-    { id: 'Video', label: 'Video', icon: '🎬' },
-    { id: 'Coding', label: 'Coding', icon: '💻' },
-    { id: 'Marketing', label: 'Marketing', icon: '📈' },
-    { id: 'Art', label: 'Digital Art', icon: '🎨' },
-    { id: 'Writing', label: 'Writing', icon: '📝' },
-    { id: 'chatgpt', label: 'ChatGPT', icon: '🤖' },
-  ];
-
   useEffect(() => {
     fetchQuote();
+    fetchCategories();
     fetchPrompts(1, 'all');
-    fetchRecommendations();
   }, []);
 
   useEffect(() => {
@@ -44,6 +34,14 @@ export default function Home() {
       const res = await fetch('https://api.ecotron.co.in/api/quote');
       const data = await res.json();
       setQuote(data.quote);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/categories');
+      const data = await res.json();
+      setDynamicCategories(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
   };
 
@@ -69,31 +67,12 @@ export default function Home() {
       });
       const data = await res.json();
       setSearchResults(Array.isArray(data) ? data : []);
-    } catch (err) { 
-      console.error(err);
-      setSearchResults([]);
-    }
+    } catch (err) { setSearchResults([]); }
     setLoading(false);
-  };
-
-  const fetchRecommendations = async () => {
-    const history = JSON.parse(localStorage.getItem('ecotron_history') || '[]');
-    try {
-      const res = await fetch('https://api.ecotron.co.in/api/recommendations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ history: history.slice(-5) }),
-      });
-      const data = await res.json();
-      setRecommendations(Array.isArray(data) ? data : []);
-    } catch (err) { console.error(err); }
   };
 
   const openPrompt = (p: any) => {
     setSelectedPrompt(p);
-    const history = JSON.parse(localStorage.getItem('ecotron_history') || '[]');
-    const newHistory = [...history, p.title].slice(-10);
-    localStorage.setItem('ecotron_history', JSON.stringify(newHistory));
   };
 
   const copyToClipboard = (text: string) => {
@@ -104,7 +83,7 @@ export default function Home() {
 
   return (
     <main className="premium-theme">
-      <title>Ecotron AI | Neural Intelligence Discovery</title>
+      <title>Ecotron AI | Content-First Prompt Engine</title>
       <div className="mesh-gradient" />
       
       <header className="main-header">
@@ -122,35 +101,36 @@ export default function Home() {
             <div className="quote-badge">
               <span className="pulse"></span> {quote}
             </div>
-            <h2 className="hero-title">Neural Discovery Engine.</h2>
+            <h2 className="hero-title">Discover. Create. Evolve.</h2>
             <form onSubmit={handleSearch} className="neural-search-box">
               <input 
                 type="text" 
-                placeholder="Search styles, code, or video prompts..." 
+                placeholder="Find Seedance 2.0 or Nano Banana styles..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button type="submit" disabled={loading}>
-                {loading ? 'Analyzing...' : 'Search'}
+                {loading ? 'Searching...' : 'Search'}
               </button>
             </form>
           </section>
 
           <nav className="category-scroller">
-            {categories.map((cat) => (
+            <button className={`cat-btn ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>✨ All</button>
+            {dynamicCategories.map((cat) => (
               <button 
-                key={cat.id}
-                className={`cat-btn ${activeCategory === cat.id ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat.id)}
+                key={cat}
+                className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
+                onClick={() => setActiveCategory(cat)}
               >
-                <span className="cat-icon">{cat.icon}</span> {cat.label}
+                {cat === 'Video' ? '🎬' : '💎'} {cat}
               </button>
             ))}
           </nav>
 
           <section className="library-section">
             <h3 className="sub-title">
-              {searchResults ? `Results for "${searchQuery}"` : 'Prompt Library'}
+              {searchResults ? `Results for "${searchQuery}"` : 'Active Library'}
             </h3>
             
             <div className="bento-grid">
@@ -167,7 +147,7 @@ export default function Home() {
 
             {!searchResults && prompts.length > 0 && (
               <button className="load-more-btn" onClick={() => { setPage(page + 1); fetchPrompts(page + 1, activeCategory); }}>
-                VIEW MORE
+                LOAD MORE
               </button>
             )}
           </section>
@@ -177,9 +157,9 @@ export default function Home() {
           <div className="sticky-rail">
             <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
             <div className="platform-info glass">
-              <h4>Platform Stats</h4>
-              <div className="stat-line"><span>Models</span> <span>LLama3 / Gemini</span></div>
-              <div className="stat-line"><span>Speed</span> <span>< 200ms</span></div>
+              <h4>System Stats</h4>
+              <div className="stat-line"><span>Active Hubs</span> <span>{dynamicCategories.length}</span></div>
+              <div className="stat-line"><span>Seedance 2.0</span> <span className="status-ok">Live</span></div>
             </div>
             <AdBanner height={600} width={300} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
           </div>
@@ -215,9 +195,7 @@ export default function Home() {
       )}
 
       <style jsx>{`
-        .premium-theme { color: #fff; min-height: 100vh; font-family: 'Inter', sans-serif; }
-        .mesh-gradient { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: -1; }
-        
+        .premium-theme { color: #fff; min-height: 100vh; font-family: 'Inter', sans-serif; background: #000; }
         .main-header { padding: 1.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 100; background: rgba(0,0,0,0.8); backdrop-filter: blur(20px); }
         .nav-container { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 2rem; }
         .logo { font-size: 1.5rem; font-weight: 900; }
@@ -260,6 +238,10 @@ export default function Home() {
 
         .main-footer { padding: 6rem 0; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); }
         .copyright { margin-top: 2rem; opacity: 0.3; font-size: 0.8rem; }
+
+        .platform-info { padding: 2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-line { display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.9rem; }
+        .status-ok { color: #10b981; font-weight: 800; }
       `}</style>
     </main>
   );
