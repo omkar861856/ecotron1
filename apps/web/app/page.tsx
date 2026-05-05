@@ -97,24 +97,28 @@ export default function Home() {
 
   return (
     <main>
-      <title>Ecotron AI | The World's Largest Nano Banana Prompt Library</title>
-      <meta name="description" content="Ecotron AI is the ultimate hub for professional AI prompts, including Nano Banana, ChatGPT, and Gemini Pro instructions. Refine and generate AI content instantly." />
-      <meta name="keywords" content="AI Prompts, Nano Banana 2, ChatGPT Prompts, Gemini Pro, AI Image Generation, Ecotron AI" />
+      <title>Ecotron AI | Advanced Prompt Engine & Video Generation</title>
       
       <div className="bg-glow" />
       
       <div className="container">
-        {/* SEO Header */}
-        <div style={{ display: 'none' }}>
-          <h1>Ecotron AI - Professional AI Prompt Library</h1>
-          <h2>Nano Banana and ChatGPT Pro Prompts</h2>
+        {/* Language Badges Bar */}
+        <div className="language-bar">
+          <img src="https://img.shields.io/badge/English-Current-brightgreen" alt="English" />
+          <img src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-View-lightgrey" alt="Simplified Chinese" />
+          <img src="https://img.shields.io/badge/%E6%97%A5%E6%9C%AC%E8%AA%9E-View-lightgrey" alt="Japanese" />
+          <img src="https://img.shields.io/badge/%ED%95%9C%EA%B5%AD%EC%96%B4-View-lightgrey" alt="Korean" />
+          <img src="https://img.shields.io/badge/%E0%A4%B9%E0%A4%BF%E0%A4%A8%E0%A5%8D%E0%A4%A6%E0%A5%80-View-lightgrey" alt="Hindi" />
+          <img src="https://img.shields.io/badge/Espa%C3%B1ol-View-lightgrey" alt="Spanish" />
+          <img src="https://img.shields.io/badge/Fran%C3%A7ais-View-lightgrey" alt="French" />
+          <img src="https://img.shields.io/badge/T%C3%BCrk%C3%A7e-View-lightgrey" alt="Turkish" />
         </div>
 
         <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
 
-        <div style={{ textAlign: 'center', marginBottom: '4rem', marginTop: '3rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '4rem', marginTop: '2rem' }}>
           <h1 className="main-logo">ECOTRON <span style={{ color: 'var(--primary)' }}>AI</span></h1>
-          <p className="subtitle">High-Performance AI Utilities & Global Prompt Engine.</p>
+          <p className="subtitle">Global Seedance 2.0 Video Hub & Advanced Prompt Engine.</p>
         </div>
 
         <div className="grid-layout">
@@ -155,12 +159,15 @@ export default function Home() {
               )}
             </div>
 
+            {/* CATEGORY BAR */}
             <div className="category-bar">
               <button className={`btn-outline ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
+              <button className={`btn-outline ${activeCategory === 'Video' ? 'active' : ''}`} onClick={() => setActiveCategory('Video')}>🎬 Video</button>
               <button className={`btn-outline ${activeCategory === 'chatgpt' ? 'active' : ''}`} onClick={() => setActiveCategory('chatgpt')}>ChatGPT</button>
               <button className={`btn-outline ${activeCategory === 'general' ? 'active' : ''}`} onClick={() => setActiveCategory('general')}>Nano Banana</button>
             </div>
 
+            {/* PROMPT GRID */}
             <div className="prompt-grid">
               {prompts.map((p, i) => (
                 <div key={i} className="prompt-item-container">
@@ -192,6 +199,13 @@ export default function Home() {
           <aside className="sticky-sidebar">
             <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
             <div className="sidebar-sticky-unit">
+              <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ marginBottom: '0.5rem' }}>Stats</h4>
+                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>
+                  <div>Total Prompts: 2,572+</div>
+                  <div>Last Updated: 2026-05-05</div>
+                </div>
+              </div>
               <AdBanner height={300} width={160} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
             </div>
           </aside>
@@ -221,17 +235,21 @@ export default function Home() {
 
         <footer>
           <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
-          <p>© 2026 ECOTRON AI. All Rights Reserved.</p>
+          <p>© 2026 ECOTRON AI. Global AI Intelligence.</p>
         </footer>
       </div>
 
       <style jsx>{`
+        .language-bar { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; opacity: 0.8; }
+        .language-bar img { height: 20px; cursor: pointer; transition: opacity 0.2s; }
+        .language-bar img:hover { opacity: 1; }
+        
         .main-logo { font-size: 3rem; letter-spacing: -0.02em; font-weight: 800; }
         .grid-layout { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; }
         .sticky-sidebar { display: flex; flex-direction: column; gap: 2rem; }
         .sidebar-sticky-unit { position: sticky; top: 2rem; }
         
-        .tool-bar { display: flex; gap: 0.75rem; marginBottom: 2rem; flexWrap: wrap; }
+        .tool-bar { display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; }
         textarea { margin-bottom: 1.5rem; min-height: 180px; }
         .action-buttons { display: flex; gap: 1rem; }
         .refine-btn { flex: 1; border-color: var(--accent); color: var(--accent); }
@@ -244,7 +262,6 @@ export default function Home() {
         .prompt-item { padding: 0; cursor: pointer; overflow: hidden; height: 100%; display: flex; flex-direction: column; transition: transform 0.2s ease; }
         .prompt-item:hover { transform: translateY(-5px); }
         .prompt-img { height: 200px; width: 100%; background-position: center; background-size: cover; }
-        .prompt-img-placeholder { height: 200px; width: 100%; background: rgba(255,255,255,0.03); display: flex; justify-content: center; alignItems: center; color: rgba(255,255,255,0.2); font-size: 0.8rem; text-align: center; padding: 1rem; }
         .prompt-info { padding: 1.5rem; flex-grow: 1; }
         .prompt-cat { font-size: 0.7rem; color: var(--primary); font-weight: bold; letter-spacing: 0.05em; }
         .prompt-title { margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.4; }
