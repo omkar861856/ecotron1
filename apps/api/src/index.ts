@@ -11,15 +11,14 @@ const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434/api/generate';
 // Register CORS
 fastify.register(cors, { origin: '*' });
 
-// Register Redis (optional but recommended for production)
+// Register Redis
 if (process.env.REDIS_URL) {
   fastify.register(redis, { url: process.env.REDIS_URL });
 }
 
 const GenerateSchema = z.object({
   prompt: z.string(),
-  task: z.enum(['general', 'resume', 'summarize', 'rewrite']).default('general'),
-  context: z.any().optional(),
+  task: z.string().optional(),
 });
 
 async function callOllama(prompt: string, model: string = 'llama3.1:8b') {
@@ -40,35 +39,33 @@ async function callOllama(prompt: string, model: string = 'llama3.1:8b') {
   }
 }
 
-// Routes
+// --- UNIVERSAL ENDPOINT ---
 fastify.post('/api/generate', async (request, reply) => {
   const { prompt, task } = GenerateSchema.parse(request.body);
-  
-  // Dynamic Routing
-  let model = 'llama3.1:8b';
-  if (task === 'rewrite' || task === 'summarize') {
-    model = 'qwen2.5:7b'; // Better for structured/multilingual tasks
-  }
-
-  const result = await callOllama(prompt, model);
-  return { result, model };
+  const result = await callOllama(prompt);
+  return { result };
 });
+
+// --- DEDICATED TOOL ENDPOINTS ---
 
 fastify.post('/api/resume', async (request, reply) => {
   const { prompt } = GenerateSchema.parse(request.body);
   const systemPrompt = "You are an expert resume builder. Format the output in clean markdown. Keep it professional and concise.";
-  const fullPrompt = `${systemPrompt}\n\nUser Data: ${prompt}`;
-  
-  const result = await callOllama(fullPrompt, 'llama3.1:8b');
+  const result = await callOllama(`${systemPrompt}\n\nUser Data: ${prompt}`, 'llama3.1:8b');
+  return { result };
+});
+
+fastify.post('/api/rewrite', async (request, reply) => {
+  const { prompt } = GenerateSchema.parse(request.body);
+  const systemPrompt = "Rewrite the following text to be more professional, engaging, and clear. Maintain the original meaning but improve the flow.";
+  const result = await callOllama(`${systemPrompt}\n\nText: ${prompt}`, 'qwen2.5:7b');
   return { result };
 });
 
 fastify.post('/api/summarize', async (request, reply) => {
   const { prompt } = GenerateSchema.parse(request.body);
   const systemPrompt = "Summarize the following text in exactly 3 bullet points. Be extremely concise.";
-  const fullPrompt = `${systemPrompt}\n\nText: ${prompt}`;
-  
-  const result = await callOllama(fullPrompt, 'qwen2.5:7b');
+  const result = await callOllama(`${systemPrompt}\n\nText: ${prompt}`, 'qwen2.5:7b');
   return { result };
 });
 
