@@ -10,7 +10,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [refining, setRefining] = useState(false);
   
-  // Pagination & Library State
   const [prompts, setPrompts] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -101,14 +100,16 @@ export default function Home() {
       <div className="bg-glow" />
       
       <div className="container">
+        {/* Responsive Header Ad */}
         <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
+        <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" className="mobile-only-header-ad" />
 
         <div style={{ textAlign: 'center', marginBottom: '4rem', marginTop: '3rem' }}>
           <h1>ECOTRON <span style={{ color: 'var(--primary)' }}>PRO</span></h1>
           <p className="subtitle">High-Performance AI Utilities & Global Prompt Engine.</p>
         </div>
 
-        <div className="grid-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
+        <div className="grid-layout">
           <section>
             <div className="glass-card" style={{ marginBottom: '3rem' }}>
               <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
@@ -120,7 +121,7 @@ export default function Home() {
 
               <textarea 
                 ref={textareaRef}
-                placeholder={`Type your prompt idea... (Enter to Send, Shift+Enter for New Line)`}
+                placeholder={`Type your idea... Enter to Send, Shift+Enter for New Line`}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -129,7 +130,7 @@ export default function Home() {
 
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button className="btn-primary" onClick={handleGenerate} disabled={loading || !input} style={{ flex: 2 }}>
-                  {loading ? 'Processing...' : `GENERATE OUTPUT (Enter)`}
+                  {loading ? 'Processing...' : `GENERATE OUTPUT`}
                 </button>
                 <button className="btn-outline" onClick={handleRefine} disabled={refining || !input} style={{ flex: 1, borderColor: 'var(--accent)', color: 'var(--accent)' }}>
                   {refining ? 'Refining...' : `⚡ REFINE`}
@@ -147,49 +148,45 @@ export default function Home() {
               )}
             </div>
 
-            {/* CATEGORY & PAGINATION */}
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className={`btn-outline ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
-                <button className={`btn-outline ${activeCategory === 'chatgpt' ? 'active' : ''}`} onClick={() => setActiveCategory('chatgpt')}>ChatGPT</button>
-                <button className={`btn-outline ${activeCategory === 'general' ? 'active' : ''}`} onClick={() => setActiveCategory('general')}>Nano Banana</button>
-              </div>
+            {/* CATEGORY & PROMPTS */}
+            <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
+              <button className={`btn-outline ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
+              <button className={`btn-outline ${activeCategory === 'chatgpt' ? 'active' : ''}`} onClick={() => setActiveCategory('chatgpt')}>ChatGPT</button>
+              <button className={`btn-outline ${activeCategory === 'general' ? 'active' : ''}`} onClick={() => setActiveCategory('general')}>Nano Banana</button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+            <div className="prompt-grid">
               {prompts.map((p, i) => (
-                <div key={i} className="glass-card" style={{ padding: 0, cursor: 'pointer', overflow: 'hidden' }} onClick={() => setSelectedPrompt(p)}>
-                  {p.image_url ? (
-                    <div style={{ height: '180px', width: '100%', background: `url(${p.image_url}) center/cover` }} />
-                  ) : (
-                    <div style={{ height: '180px', width: '100%', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.1)' }}>
-                      Generating Preview...
+                <>
+                  <div key={i} className="glass-card prompt-item" onClick={() => setSelectedPrompt(p)}>
+                    {p.image_url ? (
+                      <div className="prompt-img" style={{ backgroundImage: `url(${p.image_url})` }} />
+                    ) : (
+                      <div className="prompt-img-placeholder">Generating...</div>
+                    )}
+                    <div style={{ padding: '1.5rem' }}>
+                      <span className="prompt-cat">{p.category.toUpperCase()}</span>
+                      <h4 className="prompt-title">{p.title}</h4>
+                    </div>
+                  </div>
+                  {/* High frequency ads on mobile: every 8 prompts */}
+                  {(i + 1) % 8 === 0 && (
+                    <div className="mobile-inline-ad">
+                      <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
                     </div>
                   )}
-                  <div style={{ padding: '1.5rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 'bold' }}>{p.category.toUpperCase()}</span>
-                    <h4 style={{ margin: '0.5rem 0' }}>{p.title}</h4>
-                  </div>
-                </div>
+                </>
               ))}
             </div>
 
             {page < totalPages && (
-              <button 
-                className="btn-outline" 
-                style={{ width: '100%', marginTop: '3rem', padding: '1.5rem' }} 
-                onClick={() => {
-                  const nextP = page + 1;
-                  setPage(nextP);
-                  fetchPrompts(nextP, activeCategory);
-                }}
-              >
+              <button className="btn-outline load-more" onClick={() => { setPage(page + 1); fetchPrompts(page + 1, activeCategory); }}>
                 LOAD MORE PROMPTS
               </button>
             )}
           </section>
 
-          <aside>
+          <aside className="desktop-sidebar">
             <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
             <div style={{ position: 'sticky', top: '2rem', marginTop: '2rem' }}>
               <AdBanner height={300} width={160} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
@@ -197,28 +194,22 @@ export default function Home() {
           </aside>
         </div>
 
-        {/* PROMPT MODAL */}
+        {/* MODAL */}
         {selectedPrompt && (
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }} onClick={() => setSelectedPrompt(null)}>
-            <div className="glass-card" style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0a', padding: 0 }} onClick={e => e.stopPropagation()}>
-              {selectedPrompt.image_url && (
-                <img src={selectedPrompt.image_url} style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'cover' }} alt={selectedPrompt.title} />
-              )}
+          <div className="modal-overlay" onClick={() => setSelectedPrompt(null)}>
+            <div className="modal-content glass-card" onClick={e => e.stopPropagation()}>
+              {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-img" alt="" />}
               <div style={{ padding: '2.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
                   <div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold' }}>{selectedPrompt.category.toUpperCase()}</span>
-                    <h2 style={{ marginTop: '0.5rem' }}>{selectedPrompt.title}</h2>
+                    <h2>{selectedPrompt.title}</h2>
                   </div>
-                  <button onClick={() => setSelectedPrompt(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '2rem' }}>&times;</button>
+                  <button onClick={() => setSelectedPrompt(null)} className="close-btn">&times;</button>
                 </div>
-                
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)', marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: '1.6' }}>
-                  {selectedPrompt.content}
-                </div>
-
+                <div className="modal-prompt-text">{selectedPrompt.content}</div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => usePrompt(selectedPrompt)}>Load into AI Hub</button>
+                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => usePrompt(selectedPrompt)}>Load into Hub</button>
                   <button className="btn-outline" style={{ flex: 1 }} onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
                 </div>
               </div>
@@ -228,9 +219,35 @@ export default function Home() {
 
         <footer style={{ marginTop: '8rem', paddingBottom: '4rem', textAlign: 'center' }}>
           <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
-          <p style={{ opacity: 0.3, fontSize: '0.8rem', marginTop: '2rem' }}>© 2026 ECOTRON PRO. Scalable Media Hub.</p>
+          <p style={{ opacity: 0.3, fontSize: '0.8rem', marginTop: '2rem' }}>© 2026 ECOTRON PRO.</p>
         </footer>
       </div>
+
+      <style jsx>{`
+        .mobile-only-header-ad { display: none; }
+        .mobile-inline-ad { display: none; }
+        
+        @media (max-width: 768px) {
+          .desktop-sidebar { display: none; }
+          .mobile-only-header-ad { display: flex; margin-bottom: 2rem; }
+          .mobile-inline-ad { display: flex; grid-column: 1 / -1; margin: 1rem 0; justify-content: center; }
+          .grid-layout { grid-template-columns: 1fr !important; }
+        }
+
+        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .prompt-item { padding: 0; cursor: pointer; overflow: hidden; display: flex; flexDirection: column; }
+        .prompt-img { height: 180px; width: 100%; background-position: center; background-size: cover; }
+        .prompt-img-placeholder { height: 180px; width: 100%; background: rgba(255,255,255,0.03); display: flex; justify-content: center; alignItems: center; color: rgba(255,255,255,0.1); }
+        .prompt-cat { fontSize: 0.7rem; color: var(--primary); fontWeight: bold; }
+        .prompt-title { margin: 0.5rem 0; }
+        .load-more { width: 100%; marginTop: 3rem; padding: 1.5rem; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); backdropFilter: blur(10px); z-index: 1000; display: flex; justify-content: center; alignItems: center; padding: 2rem; }
+        .modal-content { maxWidth: 800px; width: 100%; maxHeight: 90vh; overflowY: auto; background: #0a0a0a; padding: 0; }
+        .modal-img { width: 100%; height: auto; maxHeight: 400px; objectFit: cover; }
+        .modal-prompt-text { background: rgba(255,255,255,0.03); padding: 1.5rem; borderRadius: 12px; border: 1px solid var(--glass-border); marginBottom: 2.5rem; fontSize: 1.1rem; lineHeight: 1.6; color: white; }
+        .close-btn { background: none; border: none; color: white; cursor: pointer; fontSize: 2rem; }
+      `}</style>
     </main>
   );
 }

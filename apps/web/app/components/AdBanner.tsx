@@ -6,9 +6,10 @@ interface AdBannerProps {
   height: number;
   width: number;
   adKey: string;
+  className?: string;
 }
 
-export default function AdBanner({ height, width, adKey }: AdBannerProps) {
+export default function AdBanner({ height, width, adKey, className = "" }: AdBannerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -40,12 +41,15 @@ export default function AdBanner({ height, width, adKey }: AdBannerProps) {
     }
   }, [adKey, height, width]);
 
+  // Hide ads that are wider than 300px on small screens
+  const isTooWideForMobile = width > 300;
+
   return (
     <div 
-      className="ad-wrapper" 
+      className={`ad-wrapper ${className} ${isTooWideForMobile ? 'desktop-only-ad' : ''}`} 
       style={{ 
         minHeight: `${height}px`, 
-        minWidth: `${width}px`,
+        minWidth: isTooWideForMobile ? `${width}px` : 'auto',
         display: 'flex',
         justifyContent: 'center',
         margin: '20px auto',
@@ -61,6 +65,13 @@ export default function AdBanner({ height, width, adKey }: AdBannerProps) {
         style={{ border: 'none', overflow: 'hidden' }}
         title="Advertisement"
       />
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .desktop-only-ad {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -189,6 +189,20 @@ fastify.get('/api/admin/generations', async (request, reply) => {
 });
 
 // Standard AI Routes
+fastify.post('/api/email', async (request, reply) => {
+  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const result = await model.generateContent(`Professional Email Generator: ${prompt}`);
+  return { result: result.response.text() };
+});
+
+fastify.post('/api/calc', async (request, reply) => {
+  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const result = await model.generateContent(`AI Calculator & Solver: ${prompt}`);
+  return { result: result.response.text() };
+});
+
 fastify.post('/api/rewrite', async (request, reply) => {
   const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
