@@ -13,6 +13,19 @@ services:
     networks:
       - ecotron-network
 
+  db:
+    image: postgres:15-alpine
+    container_name: ecotron-db
+    restart: always
+    environment:
+      - POSTGRES_USER=ecotron
+      - POSTGRES_PASSWORD=ecotron_pass
+      - POSTGRES_DB=ecotron_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecotron-network
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -39,7 +52,9 @@ services:
       - NODE_ENV=production
       - OLLAMA_URL=http://ollama:11434/api/generate
       - REDIS_URL=redis://ecotron-redis:6379
+      - DATABASE_URL=postgresql://ecotron:ecotron_pass@db:5432/ecotron_db
     depends_on:
+      - db
       - ollama
       - redis
     networks:
@@ -64,3 +79,4 @@ volumes:
   ollama_data:
   caddy_data:
   caddy_config:
+  postgres_data:
