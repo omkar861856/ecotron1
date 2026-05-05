@@ -71,6 +71,12 @@ async function callOllama(prompt: string, model: string = 'llama3.1:8b') {
 
 // --- AI ROUTES ---
 
+fastify.post('/api/generate', async (request, reply) => {
+  const { prompt } = GenerateSchema.parse(request.body);
+  const result = await callOllama(prompt, 'llama3.1:8b');
+  return { result };
+});
+
 fastify.post('/api/resume', async (request, reply) => {
   const { prompt } = GenerateSchema.parse(request.body);
   const result = await callOllama(`Expert Resume Builder: ${prompt}`, 'llama3.1:8b');
