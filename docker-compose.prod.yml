@@ -29,8 +29,6 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - ecotron-network
-    # Ollama will run on CPU by default if no GPU is found
-    # Fallback if no GPU is present: it will run on CPU
 
   redis:
     image: redis:7-alpine
@@ -48,13 +46,14 @@ services:
     environment:
       - NODE_ENV=production
       - OLLAMA_URL=http://ollama:11434/api/generate
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://ecotron-redis:6379
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api.rule=Host(`api.ecotron.co.in`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=myresolver"
       - "traefik.http.services.api.loadbalancer.server.port=3001"
+      - "traefik.docker.network=ecotron-network"
     depends_on:
       - ollama
       - redis
@@ -75,12 +74,13 @@ services:
       - "traefik.http.routers.web.entrypoints=websecure"
       - "traefik.http.routers.web.tls.certresolver=myresolver"
       - "traefik.http.services.web.loadbalancer.server.port=3000"
+      - "traefik.docker.network=ecotron-network"
     networks:
       - ecotron-network
 
 networks:
   ecotron-network:
-    driver: bridge
+    name: ecotron-network
 
 volumes:
   ollama_data:
