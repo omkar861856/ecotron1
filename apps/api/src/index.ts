@@ -16,9 +16,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Ollama Config (Internal)
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434';
-
 // MinIO Client
 const minioClient = new Minio.Client({
   endPoint: process.env.MINIO_ENDPOINT || 'localhost',
@@ -86,7 +83,6 @@ const trackHit = async (route: string) => {
 
 // --- IMAGE GENERATION (Every 2 Hours) ---
 cron.schedule('0 */2 * * *', async () => {
-  console.log('Running 2-hour slow-burn generation...');
   const { rows } = await pool.query('SELECT id, content FROM prompts WHERE is_generated = FALSE ORDER BY RANDOM() LIMIT 1');
   if (rows.length > 0) {
     try {
@@ -139,16 +135,26 @@ fastify.get('/api/prompts', async (request) => {
   return { data: rows, page: parseInt(page) };
 });
 
-// Admin Stats
+// Admin Stats with Env Diagnostics
 fastify.get('/api/admin/stats', async () => {
   const statsRes = await pool.query('SELECT * FROM api_stats ORDER BY hits DESC');
   const gensRes = await pool.query('SELECT g.*, p.title FROM generations g LEFT JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC LIMIT 50');
   const totalPrompts = await pool.query('SELECT COUNT(*) FROM prompts');
   const totalGens = await pool.query('SELECT COUNT(*) FROM prompts WHERE is_generated = TRUE');
   
+  // Env Checks
+  const envStatus = {
+    GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    MINIO_ENDPOINT: !!process.env.MINIO_ENDPOINT,
+    REDIS_URL: !!process.env.REDIS_URL,
+    CDN_ROOT: !!process.env.NEXT_PUBLIC_API_URL
+  };
+  
   return {
     apiHits: statsRes.rows,
     recentGens: gensRes.rows,
+    envStatus,
     overview: {
       totalPrompts: totalPrompts.rows[0].count,
       totalGens: totalGens.rows[0].count
