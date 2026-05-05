@@ -97,22 +97,30 @@ export default function Home() {
 
   return (
     <main>
+      <title>Ecotron AI | The World's Largest Nano Banana Prompt Library</title>
+      <meta name="description" content="Ecotron AI is the ultimate hub for professional AI prompts, including Nano Banana, ChatGPT, and Gemini Pro instructions. Refine and generate AI content instantly." />
+      <meta name="keywords" content="AI Prompts, Nano Banana 2, ChatGPT Prompts, Gemini Pro, AI Image Generation, Ecotron AI" />
+      
       <div className="bg-glow" />
       
       <div className="container">
-        {/* Responsive Header Ad */}
+        {/* SEO Header */}
+        <div style={{ display: 'none' }}>
+          <h1>Ecotron AI - Professional AI Prompt Library</h1>
+          <h2>Nano Banana and ChatGPT Pro Prompts</h2>
+        </div>
+
         <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
-        <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" className="mobile-only-header-ad" />
 
         <div style={{ textAlign: 'center', marginBottom: '4rem', marginTop: '3rem' }}>
-          <h1>ECOTRON <span style={{ color: 'var(--primary)' }}>PRO</span></h1>
+          <h1 className="main-logo">ECOTRON <span style={{ color: 'var(--primary)' }}>AI</span></h1>
           <p className="subtitle">High-Performance AI Utilities & Global Prompt Engine.</p>
         </div>
 
         <div className="grid-layout">
           <section>
             <div className="glass-card" style={{ marginBottom: '3rem' }}>
-              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+              <div className="tool-bar">
                 <button className={`btn-outline ${activeTool === 'rewrite' ? 'active' : ''}`} onClick={() => setActiveTool('rewrite')}>Rewrite</button>
                 <button className={`btn-outline ${activeTool === 'summarize' ? 'active' : ''}`} onClick={() => setActiveTool('summarize')}>Summarize</button>
                 <button className={`btn-outline ${activeTool === 'email' ? 'active' : ''}`} onClick={() => setActiveTool('email')}>Email</button>
@@ -121,35 +129,33 @@ export default function Home() {
 
               <textarea 
                 ref={textareaRef}
-                placeholder={`Type your idea... Enter to Send, Shift+Enter for New Line`}
+                placeholder={`Type your prompt idea... Enter to Send, Shift+Enter for New Line`}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                style={{ marginBottom: '1.5rem', minHeight: '150px' }}
               />
 
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn-primary" onClick={handleGenerate} disabled={loading || !input} style={{ flex: 2 }}>
+              <div className="action-buttons">
+                <button className="btn-primary" onClick={handleGenerate} disabled={loading || !input}>
                   {loading ? 'Processing...' : `GENERATE OUTPUT`}
                 </button>
-                <button className="btn-outline" onClick={handleRefine} disabled={refining || !input} style={{ flex: 1, borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                <button className="btn-outline refine-btn" onClick={handleRefine} disabled={refining || !input}>
                   {refining ? 'Refining...' : `⚡ REFINE`}
                 </button>
               </div>
 
               {output && (
-                <div className="glass-card" style={{ background: 'rgba(59, 130, 246, 0.05)', marginTop: '2rem', borderColor: 'var(--primary)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                    <h3 style={{ color: 'var(--primary)' }}>Result</h3>
-                    <button className="btn-outline" onClick={() => copyToClipboard(output)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Copy</button>
+                <div className="result-card glass-card">
+                  <div className="result-header">
+                    <h3>Result</h3>
+                    <button className="btn-outline" onClick={() => copyToClipboard(output)}>Copy</button>
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.9)' }}>{output}</div>
+                  <div className="result-text">{output}</div>
                 </div>
               )}
             </div>
 
-            {/* CATEGORY & PROMPTS */}
-            <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
+            <div className="category-bar">
               <button className={`btn-outline ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
               <button className={`btn-outline ${activeCategory === 'chatgpt' ? 'active' : ''}`} onClick={() => setActiveCategory('chatgpt')}>ChatGPT</button>
               <button className={`btn-outline ${activeCategory === 'general' ? 'active' : ''}`} onClick={() => setActiveCategory('general')}>Nano Banana</button>
@@ -157,25 +163,22 @@ export default function Home() {
 
             <div className="prompt-grid">
               {prompts.map((p, i) => (
-                <>
-                  <div key={i} className="glass-card prompt-item" onClick={() => setSelectedPrompt(p)}>
-                    {p.image_url ? (
+                <div key={i} className="prompt-item-container">
+                  <div className="glass-card prompt-item" onClick={() => setSelectedPrompt(p)}>
+                    {p.image_url && (
                       <div className="prompt-img" style={{ backgroundImage: `url(${p.image_url})` }} />
-                    ) : (
-                      <div className="prompt-img-placeholder">Generating...</div>
                     )}
-                    <div style={{ padding: '1.5rem' }}>
+                    <div className="prompt-info">
                       <span className="prompt-cat">{p.category.toUpperCase()}</span>
                       <h4 className="prompt-title">{p.title}</h4>
                     </div>
                   </div>
-                  {/* High frequency ads on mobile: every 8 prompts */}
                   {(i + 1) % 8 === 0 && (
                     <div className="mobile-inline-ad">
                       <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
                     </div>
                   )}
-                </>
+                </div>
               ))}
             </div>
 
@@ -186,67 +189,85 @@ export default function Home() {
             )}
           </section>
 
-          <aside className="desktop-sidebar">
+          <aside className="sticky-sidebar">
             <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
-            <div style={{ position: 'sticky', top: '2rem', marginTop: '2rem' }}>
+            <div className="sidebar-sticky-unit">
               <AdBanner height={300} width={160} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
             </div>
           </aside>
         </div>
 
-        {/* MODAL */}
         {selectedPrompt && (
           <div className="modal-overlay" onClick={() => setSelectedPrompt(null)}>
             <div className="modal-content glass-card" onClick={e => e.stopPropagation()}>
-              {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-img" alt="" />}
+              {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-img" alt={selectedPrompt.title} />}
               <div style={{ padding: '2.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
+                <div className="modal-header">
                   <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold' }}>{selectedPrompt.category.toUpperCase()}</span>
+                    <span className="prompt-cat">{selectedPrompt.category.toUpperCase()}</span>
                     <h2>{selectedPrompt.title}</h2>
                   </div>
                   <button onClick={() => setSelectedPrompt(null)} className="close-btn">&times;</button>
                 </div>
                 <div className="modal-prompt-text">{selectedPrompt.content}</div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => usePrompt(selectedPrompt)}>Load into Hub</button>
-                  <button className="btn-outline" style={{ flex: 1 }} onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
+                <div className="modal-actions">
+                  <button className="btn-primary" onClick={() => usePrompt(selectedPrompt)}>Load into Hub</button>
+                  <button className="btn-outline" onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        <footer style={{ marginTop: '8rem', paddingBottom: '4rem', textAlign: 'center' }}>
+        <footer>
           <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
-          <p style={{ opacity: 0.3, fontSize: '0.8rem', marginTop: '2rem' }}>© 2026 ECOTRON PRO.</p>
+          <p>© 2026 ECOTRON AI. All Rights Reserved.</p>
         </footer>
       </div>
 
       <style jsx>{`
-        .mobile-only-header-ad { display: none; }
-        .mobile-inline-ad { display: none; }
+        .main-logo { font-size: 3rem; letter-spacing: -0.02em; font-weight: 800; }
+        .grid-layout { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; }
+        .sticky-sidebar { display: flex; flex-direction: column; gap: 2rem; }
+        .sidebar-sticky-unit { position: sticky; top: 2rem; }
         
-        @media (max-width: 768px) {
-          .desktop-sidebar { display: none; }
-          .mobile-only-header-ad { display: flex; margin-bottom: 2rem; }
-          .mobile-inline-ad { display: flex; grid-column: 1 / -1; margin: 1rem 0; justify-content: center; }
-          .grid-layout { grid-template-columns: 1fr !important; }
+        .tool-bar { display: flex; gap: 0.75rem; marginBottom: 2rem; flexWrap: wrap; }
+        textarea { margin-bottom: 1.5rem; min-height: 180px; }
+        .action-buttons { display: flex; gap: 1rem; }
+        .refine-btn { flex: 1; border-color: var(--accent); color: var(--accent); }
+        .result-card { background: rgba(59, 130, 246, 0.05); margin-top: 2rem; border-color: var(--primary); }
+        .result-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
+        .result-text { white-space: pre-wrap; color: rgba(255,255,255,0.9); }
+        
+        .category-bar { margin-bottom: 2rem; display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .prompt-item { padding: 0; cursor: pointer; overflow: hidden; height: 100%; display: flex; flex-direction: column; transition: transform 0.2s ease; }
+        .prompt-item:hover { transform: translateY(-5px); }
+        .prompt-img { height: 200px; width: 100%; background-position: center; background-size: cover; }
+        .prompt-img-placeholder { height: 200px; width: 100%; background: rgba(255,255,255,0.03); display: flex; justify-content: center; alignItems: center; color: rgba(255,255,255,0.2); font-size: 0.8rem; text-align: center; padding: 1rem; }
+        .prompt-info { padding: 1.5rem; flex-grow: 1; }
+        .prompt-cat { font-size: 0.7rem; color: var(--primary); font-weight: bold; letter-spacing: 0.05em; }
+        .prompt-title { margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.4; }
+        .load-more { width: 100%; margin-top: 3rem; padding: 1.5rem; }
+
+        .mobile-inline-ad { display: none; }
+
+        @media (max-width: 992px) {
+          .grid-layout { grid-template-columns: 1fr; }
+          .sticky-sidebar { display: none; }
+          .mobile-inline-ad { display: flex; justify-content: center; margin: 1rem 0; width: 100%; grid-column: 1 / -1; }
         }
 
-        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-        .prompt-item { padding: 0; cursor: pointer; overflow: hidden; display: flex; flexDirection: column; }
-        .prompt-img { height: 180px; width: 100%; background-position: center; background-size: cover; }
-        .prompt-img-placeholder { height: 180px; width: 100%; background: rgba(255,255,255,0.03); display: flex; justify-content: center; alignItems: center; color: rgba(255,255,255,0.1); }
-        .prompt-cat { fontSize: 0.7rem; color: var(--primary); fontWeight: bold; }
-        .prompt-title { margin: 0.5rem 0; }
-        .load-more { width: 100%; marginTop: 3rem; padding: 1.5rem; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); backdrop-filter: blur(15px); z-index: 1000; display: flex; justify-content: center; alignItems: center; padding: 2rem; }
+        .modal-content { max-width: 800px; width: 100%; max-height: 95vh; overflow-y: auto; background: #070707; padding: 0; border: 1px solid var(--glass-border); }
+        .modal-img { width: 100%; height: auto; max-height: 450px; object-fit: cover; border-bottom: 1px solid var(--glass-border); }
+        .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; }
+        .modal-prompt-text { background: rgba(255,255,255,0.03); padding: 2rem; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 2.5rem; font-size: 1.15rem; line-height: 1.7; color: #fff; }
+        .modal-actions { display: flex; gap: 1rem; }
+        .close-btn { background: none; border: none; color: white; cursor: pointer; font-size: 2.5rem; line-height: 1; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); backdropFilter: blur(10px); z-index: 1000; display: flex; justify-content: center; alignItems: center; padding: 2rem; }
-        .modal-content { maxWidth: 800px; width: 100%; maxHeight: 90vh; overflowY: auto; background: #0a0a0a; padding: 0; }
-        .modal-img { width: 100%; height: auto; maxHeight: 400px; objectFit: cover; }
-        .modal-prompt-text { background: rgba(255,255,255,0.03); padding: 1.5rem; borderRadius: 12px; border: 1px solid var(--glass-border); marginBottom: 2.5rem; fontSize: 1.1rem; lineHeight: 1.6; color: white; }
-        .close-btn { background: none; border: none; color: white; cursor: pointer; fontSize: 2rem; }
+        footer { margin-top: 8rem; padding-bottom: 4rem; text-align: center; border-top: 1px solid var(--glass-border); padding-top: 4rem; }
+        footer p { opacity: 0.3; font-size: 0.8rem; margin-top: 2rem; }
       `}</style>
     </main>
   );

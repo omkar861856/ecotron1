@@ -130,6 +130,22 @@ cron.schedule('0 */4 * * *', async () => {
   }
 });
 
+// Bulk Generation for Admin
+fastify.post('/api/admin/bulk-generate', async (request, reply) => {
+  const { rows } = await pool.query('SELECT id, content FROM prompts WHERE is_generated = FALSE LIMIT 100');
+  
+  // Running in background to not block the request
+  (async () => {
+    for (const row of rows) {
+      await generateImage(row.id, row.content);
+      // Short delay to respect quotas
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  })();
+  
+  return { message: `Started background generation for ${rows.length} prompts.` };
+});
+
 // --- ROUTES ---
 
 // Paginated Prompts

@@ -7,6 +7,7 @@ export default function Admin() {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [gens, setGens] = useState<any[]>([]);
+  const [bulkStatus, setBulkStatus] = useState('');
 
   const handleLogin = () => {
     if (user === 'admin' && pass === 'password') {
@@ -24,6 +25,18 @@ export default function Admin() {
       setGens(data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const startBulkGen = async () => {
+    setBulkStatus('Starting Bulk Generation...');
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/admin/bulk-generate', { method: 'POST' });
+      const data = await res.json();
+      setBulkStatus(data.message);
+      fetchGens();
+    } catch (err) {
+      setBulkStatus('Error starting bulk generation.');
     }
   };
 
@@ -52,8 +65,16 @@ export default function Admin() {
 
   return (
     <div className="container" style={{ paddingTop: '5rem' }}>
-      <h1>ADMIN DASHBOARD</h1>
-      <p style={{ opacity: 0.5, marginBottom: '3rem' }}>Monitoring AI Generations & Requests</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+        <div>
+          <h1>ADMIN DASHBOARD</h1>
+          <p style={{ opacity: 0.5 }}>Monitoring Ecotron AI Generations</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          {bulkStatus && <span style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>{bulkStatus}</span>}
+          <button className="btn-primary" onClick={startBulkGen}>🚀 Start Bulk Generation (Next 100)</button>
+        </div>
+      </div>
 
       <div className="glass-card">
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
