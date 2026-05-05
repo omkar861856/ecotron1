@@ -3,7 +3,7 @@ WORKDIR /app
 RUN npm install -g pnpm
 COPY . .
 RUN pnpm install
-RUN pnpm --filter api build
+RUN pnpm build --filter api...
 
 FROM node:20-alpine
 WORKDIR /app
