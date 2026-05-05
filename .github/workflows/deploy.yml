@@ -17,7 +17,9 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          mkdir -p /home/${{ secrets.SERVER_USER }}/ecotron
+          mkdir -p /home/${{ secrets.SERVER_USER }}/ecotron/letsencrypt
+          touch /home/${{ secrets.SERVER_USER }}/ecotron/letsencrypt/acme.json
+          chmod 600 /home/${{ secrets.SERVER_USER }}/ecotron/letsencrypt/acme.json
           cd /home/${{ secrets.SERVER_USER }}/ecotron
           if [ ! -d ".git" ]; then
             rm -rf ./*
