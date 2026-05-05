@@ -11,13 +11,14 @@ export default function Home() {
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://api.ecotron.co.in/generate', {
+      // FIX: Use /api/generate instead of /generate
+      const res = await fetch(`https://api.ecotron.co.in/api/${activeTool === 'resume' ? 'resume' : activeTool}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: input, mode: activeTool }),
+        body: JSON.stringify({ prompt: input, task: activeTool }),
       });
       const data = await res.json();
-      setOutput(data.response);
+      setOutput(data.result || data.response || 'No response from AI.');
     } catch (err) {
       console.error(err);
       setOutput('Error generating response. Please try again.');
@@ -40,9 +41,10 @@ export default function Home() {
           <p className="subtitle">Production-grade AI utilities for modern creators.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
+        {/* Added grid-layout class for responsiveness */}
+        <div className="grid-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
           <section className="glass-card">
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
               <button 
                 className={`btn-outline ${activeTool === 'resume' ? 'active' : ''}`}
                 onClick={() => setActiveTool('resume')}
@@ -86,7 +88,7 @@ export default function Home() {
             {output && (
               <div className="glass-card" style={{ background: 'rgba(255,255,255,0.02)', marginTop: '1rem' }}>
                 <h3 style={{ marginBottom: '1rem', color: 'var(--secondary)' }}>Result</h3>
-                <p style={{ whiteSpace: 'pre-wrap' }}>{output}</p>
+                <div style={{ whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.9)' }}>{output}</div>
               </div>
             )}
           </section>

@@ -151,3 +151,63 @@ textarea:focus {
   letter-spacing: 0.1em;
   border-radius: 8px;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 3rem;
+  }
+  
+  .container {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2.5rem;
+  }
+  
+  .container {
+    padding: 1rem;
+  }
+
+  p.subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .glass-card {
+    padding: 1.5rem;
+  }
+
+  /* Stack columns on mobile */
+  .grid-layout {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  aside {
+    order: 2;
+  }
+
+  section {
+    order: 1;
+  }
+
+  .ad-container {
+    overflow: hidden;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  .btn-outline {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
