@@ -1,0 +1,7 @@
+ecotron.co.in, play.ecotron.co.in {
+    reverse_proxy ecotron-web:3000
+}
+
+api.ecotron.co.in, srv.ecotron.co.in {
+    reverse_proxy ecotron-api:3001
+}
