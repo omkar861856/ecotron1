@@ -82,7 +82,7 @@ services:
 
 networks:
   ecotron-network:
-    name: ecotron-network
+    external: true
 
 volumes:
   ollama_data:
