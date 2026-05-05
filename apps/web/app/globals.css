@@ -1,28 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+
 :root {
-  --background: #0a0a0c;
+  --background: #050505;
   --foreground: #ffffff;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --accent: #f43f5e;
-  --glass: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --primary: #3b82f6;
+  --primary-glow: rgba(59, 130, 246, 0.5);
+  --secondary: #10b981;
+  --accent: #8b5cf6;
+  --card-bg: rgba(255, 255, 255, 0.03);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 * {
   box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  min-height: 100vh;
+  line-height: 1.6;
 }
 
+/* Background Animation */
 .bg-glow {
   position: fixed;
   top: 0;
@@ -31,110 +36,118 @@ body {
   height: 100vh;
   z-index: -1;
   background: 
-    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(244, 63, 94, 0.15) 0%, transparent 40%);
+    radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 40%);
   filter: blur(80px);
 }
 
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Glassmorphism */
 .glass-card {
-  background: var(--glass);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: 24px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  padding: 2rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
 }
 
-/* Dice Styles */
-.dice-container {
-  perspective: 1000px;
-  width: 100px;
-  height: 100px;
-  margin: 40px auto;
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px);
 }
 
-.dice {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/* Typography */
+h1 {
+  font-weight: 800;
+  font-size: 4rem;
+  letter-spacing: -0.04em;
+  background: linear-gradient(to bottom right, #fff 40%, rgba(255,255,255,0.5));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
 }
 
-.dice.rolling {
-  animation: rolling 2s infinite linear;
+p.subtitle {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 3rem;
 }
 
-@keyframes rolling {
-  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-  100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
-}
-
-.face {
-  position: absolute;
-  width: 100px;
-  height: 100px;
-  background: #fff;
-  border: 1px solid #ddd;
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
   border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px var(--primary-glow);
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 30px var(--primary-glow);
+}
+
+.btn-outline {
+  background: transparent;
+  color: white;
+  border: 1px solid var(--glass-border);
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-outline.active {
+  background: white;
+  color: black;
+}
+
+/* Inputs */
+textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: white;
+  padding: 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 200px;
+  transition: border-color 0.3s ease;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Ads Grid */
+.ad-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 40px;
-  color: #333;
-  box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 8px;
 }
-
-.front  { transform: translateZ(50px); }
-.back   { transform: rotateY(180deg) translateZ(50px); }
-.right  { transform: rotateY(90deg) translateZ(50px); }
-.left   { transform: rotateY(-90deg) translateZ(50px); }
-.top    { transform: rotateX(90deg) translateZ(50px); }
-.bottom { transform: rotateX(-90deg) translateZ(50px); }
-
-/* Dice dots */
-.face {
-  padding: 15px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 5px;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
-  background: #333;
-  border-radius: 50%;
-  align-self: center;
-  justify-self: center;
-  visibility: hidden;
-}
-
-/* Face layouts */
-.face[data-value="1"] .dot:nth-child(5) { visibility: visible; }
-
-.face[data-value="2"] .dot:nth-child(1),
-.face[data-value="2"] .dot:nth-child(9) { visibility: visible; }
-
-.face[data-value="3"] .dot:nth-child(1),
-.face[data-value="3"] .dot:nth-child(5),
-.face[data-value="3"] .dot:nth-child(9) { visibility: visible; }
-
-.face[data-value="4"] .dot:nth-child(1),
-.face[data-value="4"] .dot:nth-child(3),
-.face[data-value="4"] .dot:nth-child(7),
-.face[data-value="4"] .dot:nth-child(9) { visibility: visible; }
-
-.face[data-value="5"] .dot:nth-child(1),
-.face[data-value="5"] .dot:nth-child(3),
-.face[data-value="5"] .dot:nth-child(5),
-.face[data-value="5"] .dot:nth-child(7),
-.face[data-value="5"] .dot:nth-child(9) { visibility: visible; }
-
-.face[data-value="6"] .dot:nth-child(1),
-.face[data-value="6"] .dot:nth-child(3),
-.face[data-value="6"] .dot:nth-child(4),
-.face[data-value="6"] .dot:nth-child(6),
-.face[data-value="6"] .dot:nth-child(7),
-.face[data-value="6"] .dot:nth-child(9) { visibility: visible; }
