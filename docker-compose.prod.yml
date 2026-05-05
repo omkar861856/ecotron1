@@ -26,6 +26,19 @@ services:
     networks:
       - ecotron-network
 
+  minio:
+    image: minio/minio:latest
+    container_name: ecotron-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    networks:
+      - ecotron-network
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -53,8 +66,13 @@ services:
       - OLLAMA_URL=http://ollama:11434/api/generate
       - REDIS_URL=redis://ecotron-redis:6379
       - DATABASE_URL=postgresql://ecotron:ecotron_pass@db:5432/ecotron_db
+      - GEMINI_API_KEY=AIzaSyBqJ4hq0Xy3YlQB7ckjAhS6y4NWE6e478s
+      - MINIO_ENDPOINT=minio
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     depends_on:
       - db
+      - minio
       - ollama
       - redis
     networks:
@@ -80,3 +98,4 @@ volumes:
   caddy_data:
   caddy_config:
   postgres_data:
+  minio_data:

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Pool } from 'pg';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import cron from 'node-cron';
+import * as Minio from 'minio';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,11 +20,16 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Ensure storage directory exists
-const STORAGE_DIR = '/root/ecotron/public/generated';
-if (!fs.existsSync(STORAGE_DIR)) {
-  fs.mkdirSync(STORAGE_DIR, { recursive: true });
-}
+// MinIO Client
+const minioClient = new Minio.Client({
+  endPoint: process.env.MINIO_ENDPOINT || 'localhost',
+  port: 9000,
+  useSSL: false,
+  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+});
+
+const BUCKET_NAME = 'prompts-media';
 
 // Register CORS
 fastify.register(cors, { origin: '*' });
@@ -37,7 +43,6 @@ if (process.env.REDIS_URL) {
 const initDB = async () => {
   const client = await pool.connect();
   try {
-    // prompts table with image_url and refinement status
     await client.query(`
       CREATE TABLE IF NOT EXISTS prompts (
         id SERIAL PRIMARY KEY,
@@ -51,7 +56,6 @@ const initDB = async () => {
       );
     `);
     
-    // generations log for admin panel
     await client.query(`
       CREATE TABLE IF NOT EXISTS generations (
         id SERIAL PRIMARY KEY,
@@ -61,32 +65,52 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure MinIO bucket exists
+    const bucketExists = await minioClient.bucketExists(BUCKET_NAME);
+    if (!bucketExists) {
+      await minioClient.makeBucket(BUCKET_NAME, 'us-east-1');
+      // Set bucket to public read
+      const policy = {
+        Version: "2012-10-17",
+        Statement: [{
+          Effect: "Allow",
+          Principal: { AWS: ["*"] },
+          Action: ["s3:GetBucketLocation", "s3:ListBucket"],
+          Resource: [`arn:aws:s3:::${BUCKET_NAME}`],
+        }, {
+          Effect: "Allow",
+          Principal: { AWS: ["*"] },
+          Action: ["s3:GetObject"],
+          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
+        }],
+      };
+      await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
+    }
+  } catch (err) {
+    console.error('DB/Minio Init Error:', err);
   } finally {
     client.release();
   }
 };
-
-const GenerateSchema = z.object({
-  prompt: z.string(),
-  task: z.string().optional(),
-});
 
 // --- IMAGE GENERATION (NANO BANANA) ---
 
 const generateImage = async (promptId: number, promptText: string) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-image-preview" });
-    const result = await model.generateContent([`Create a high-fidelity preview image for this AI prompt: ${promptText}. Style: Professional, clean, and representative.`]);
+    const result = await model.generateContent([`Create a high-fidelity preview image for this AI prompt: ${promptText}. Style: Professional, clean.`]);
     const response = await result.response;
     
-    // Extract image data (assuming standard base64/buffer response from SDK)
     const part = response.candidates![0].content.parts.find(p => p.inlineData);
     if (part && part.inlineData) {
       const fileName = `prompt_${promptId}_${Date.now()}.png`;
-      const filePath = path.join(STORAGE_DIR, fileName);
-      fs.writeFileSync(filePath, Buffer.from(part.inlineData.data, 'base64'));
+      const buffer = Buffer.from(part.inlineData.data, 'base64');
       
-      const publicUrl = `https://api.ecotron.co.in/generated/${fileName}`;
+      // Upload to MinIO
+      await minioClient.putObject(BUCKET_NAME, fileName, buffer, buffer.length, { 'Content-Type': 'image/png' });
+      
+      const publicUrl = `https://api.ecotron.co.in/cdn/${fileName}`;
       await pool.query('UPDATE prompts SET image_url = $1, is_generated = TRUE WHERE id = $2', [publicUrl, promptId]);
       await pool.query('INSERT INTO generations (prompt_id, status) VALUES ($1, $2)', [promptId, 'success']);
       return publicUrl;
@@ -108,63 +132,77 @@ cron.schedule('0 */4 * * *', async () => {
 
 // --- ROUTES ---
 
-fastify.get('/api/prompts', async () => {
-  const { rows } = await pool.query('SELECT * FROM prompts ORDER BY created_at DESC');
-  return rows;
+// Paginated Prompts
+fastify.get('/api/prompts', async (request) => {
+  const { page = 1, limit = 24, category = 'all' } = request.query as any;
+  const offset = (page - 1) * limit;
+  
+  let query = 'SELECT * FROM prompts';
+  let params = [];
+  
+  if (category !== 'all') {
+    query += ' WHERE category = $1';
+    params.push(category);
+    query += ` ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+    params.push(limit, offset);
+  } else {
+    query += ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`;
+    params.push(limit, offset);
+  }
+
+  const { rows } = await pool.query(query, params);
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM prompts' + (category !== 'all' ? ' WHERE category = $1' : ''), category !== 'all' ? [category] : []);
+  
+  return {
+    data: rows,
+    total: parseInt(countRows[0].count),
+    page: parseInt(page),
+    totalPages: Math.ceil(parseInt(countRows[0].count) / limit)
+  };
 });
 
 // Refine Prompt with Guardrails
 fastify.post('/api/refine', async (request, reply) => {
-  const { prompt } = GenerateSchema.parse(request.body);
+  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   
-  const systemPrompt = `You are a Prompt Engineering Expert for the Nano Banana model. 
-  Refine the user's raw prompt into a highly detailed, professional prompt.
-  GUARDRAILS: 
-  - No NSFW, toxic, or harmful content.
-  - No generation of real people without permission.
-  - Focus on artistic quality and clarity.
-  Original: ${prompt}`;
-  
+  const systemPrompt = `Refine the user's raw prompt into a highly detailed, professional prompt for Nano Banana. Original: ${prompt}`;
   const result = await model.generateContent(systemPrompt);
   return { result: result.response.text() };
 });
 
-// Admin generations check
-fastify.get('/api/admin/generations', async (request, reply) => {
-  // Simple auth check could be added here
-  const { rows } = await pool.query('SELECT g.*, p.title FROM generations g JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC');
-  return rows;
-});
-
-// Serve generated images
-fastify.get('/generated/:filename', async (request, reply) => {
+// Serve images via MinIO Proxy
+fastify.get('/cdn/:filename', async (request, reply) => {
   const { filename } = request.params as { filename: string };
-  const filePath = path.join(STORAGE_DIR, filename);
-  if (fs.existsSync(filePath)) {
-    const stream = fs.createReadStream(filePath);
+  try {
+    const stream = await minioClient.getObject(BUCKET_NAME, filename);
     reply.type('image/png').send(stream);
-  } else {
+  } catch (err) {
     reply.status(404).send('Not Found');
   }
 });
 
-// Standard AI Routes (existing)
-fastify.post('/api/resume', async (request, reply) => {
-  const { prompt } = GenerateSchema.parse(request.body);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`Expert Resume Builder: ${prompt}`);
-  return { result: result.response.text() };
+// Admin generations check
+fastify.get('/api/admin/generations', async (request, reply) => {
+  const { rows } = await pool.query('SELECT g.*, p.title FROM generations g JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC');
+  return rows;
 });
 
+// Standard AI Routes
 fastify.post('/api/rewrite', async (request, reply) => {
-  const { prompt } = GenerateSchema.parse(request.body);
+  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   const result = await model.generateContent(`Professional Rewrite: ${prompt}`);
   return { result: result.response.text() };
 });
 
-// Health check
+fastify.post('/api/summarize', async (request, reply) => {
+  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const result = await model.generateContent(`Summarize: ${prompt}`);
+  return { result: result.response.text() };
+});
+
 fastify.get('/health', async () => ({ status: 'ok' }));
 
 const start = async () => {
