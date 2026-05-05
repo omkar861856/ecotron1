@@ -1,0 +1,140 @@
+:root {
+  --background: #0a0a0c;
+  --foreground: #ffffff;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --accent: #f43f5e;
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+.bg-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(244, 63, 94, 0.15) 0%, transparent 40%);
+  filter: blur(80px);
+}
+
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Dice Styles */
+.dice-container {
+  perspective: 1000px;
+  width: 100px;
+  height: 100px;
+  margin: 40px auto;
+}
+
+.dice {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dice.rolling {
+  animation: rolling 2s infinite linear;
+}
+
+@keyframes rolling {
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+}
+
+.face {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 40px;
+  color: #333;
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+}
+
+.front  { transform: translateZ(50px); }
+.back   { transform: rotateY(180deg) translateZ(50px); }
+.right  { transform: rotateY(90deg) translateZ(50px); }
+.left   { transform: rotateY(-90deg) translateZ(50px); }
+.top    { transform: rotateX(90deg) translateZ(50px); }
+.bottom { transform: rotateX(-90deg) translateZ(50px); }
+
+/* Dice dots */
+.face {
+  padding: 15px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background: #333;
+  border-radius: 50%;
+  align-self: center;
+  justify-self: center;
+  visibility: hidden;
+}
+
+/* Face layouts */
+.face[data-value="1"] .dot:nth-child(5) { visibility: visible; }
+
+.face[data-value="2"] .dot:nth-child(1),
+.face[data-value="2"] .dot:nth-child(9) { visibility: visible; }
+
+.face[data-value="3"] .dot:nth-child(1),
+.face[data-value="3"] .dot:nth-child(5),
+.face[data-value="3"] .dot:nth-child(9) { visibility: visible; }
+
+.face[data-value="4"] .dot:nth-child(1),
+.face[data-value="4"] .dot:nth-child(3),
+.face[data-value="4"] .dot:nth-child(7),
+.face[data-value="4"] .dot:nth-child(9) { visibility: visible; }
+
+.face[data-value="5"] .dot:nth-child(1),
+.face[data-value="5"] .dot:nth-child(3),
+.face[data-value="5"] .dot:nth-child(5),
+.face[data-value="5"] .dot:nth-child(7),
+.face[data-value="5"] .dot:nth-child(9) { visibility: visible; }
+
+.face[data-value="6"] .dot:nth-child(1),
+.face[data-value="6"] .dot:nth-child(3),
+.face[data-value="6"] .dot:nth-child(4),
+.face[data-value="6"] .dot:nth-child(6),
+.face[data-value="6"] .dot:nth-child(7),
+.face[data-value="6"] .dot:nth-child(9) { visibility: visible; }
