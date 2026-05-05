@@ -4,82 +4,88 @@ import { useState, useEffect, useRef } from 'react';
 import AdBanner from './components/AdBanner';
 
 export default function Home() {
-  const [activeTool, setActiveTool] = useState<'rewrite' | 'summarize' | 'email' | 'calc'>('rewrite');
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [refining, setRefining] = useState(false);
+  const [quote, setQuote] = useState('');
   
   const [prompts, setPrompts] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
   const [copyStatus, setCopyStatus] = useState('Copy');
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    fetchQuote();
+    fetchPrompts(1, 'all');
+    fetchRecommendations();
+  }, []);
 
   useEffect(() => {
     setPage(1);
     setPrompts([]);
+    setSearchResults(null);
     fetchPrompts(1, activeCategory);
   }, [activeCategory]);
+
+  const fetchQuote = async () => {
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/quote');
+      const data = await res.json();
+      setQuote(data.quote);
+    } catch (err) { console.error(err); }
+  };
 
   const fetchPrompts = async (pageNum: number, category: string) => {
     try {
       const res = await fetch(`https://api.ecotron.co.in/api/prompts?page=${pageNum}&category=${category}&limit=24`);
       const data = await res.json();
-      if (pageNum === 1) {
-        setPrompts(data.data);
-      } else {
-        setPrompts(prev => [...prev, ...data.data]);
-      }
-      setTotalPages(data.totalPages);
-    } catch (err) {
-      console.error('Failed to fetch prompts', err);
-    }
+      if (pageNum === 1) setPrompts(data.data);
+      else setPrompts(prev => [...prev, ...data.data]);
+    } catch (err) { console.error(err); }
   };
 
-  const handleGenerate = async () => {
-    if (loading || !input) return;
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery) return;
     setLoading(true);
     try {
-      const res = await fetch(`https://api.ecotron.co.in/api/${activeTool}`, {
+      const res = await fetch('https://api.ecotron.co.in/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: input, task: activeTool }),
+        body: JSON.stringify({ query: searchQuery }),
       });
       const data = await res.json();
-      setOutput(data.result || data.response || 'No response from AI.');
-    } catch (err) {
-      console.error(err);
-      setOutput('Error generating response.');
-    }
+      setSearchResults(data);
+    } catch (err) { console.error(err); }
     setLoading(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleGenerate();
-    }
-  };
-
-  const handleRefine = async () => {
-    if (!input || refining) return;
-    setRefining(true);
+  const fetchRecommendations = async () => {
+    const history = JSON.parse(localStorage.getItem('ecotron_history') || '[]');
+    if (history.length === 0) return;
     try {
-      const res = await fetch('https://api.ecotron.co.in/api/refine', {
+      const res = await fetch('https://api.ecotron.co.in/api/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: input }),
+        body: JSON.stringify({ history: history.slice(-5) }),
       });
       const data = await res.json();
-      setInput(data.result);
-    } catch (err) {
-      console.error(err);
-    }
-    setRefining(false);
+      setRecommendations(data);
+    } catch (err) { console.error(err); }
+  };
+
+  const trackActivity = (title: string) => {
+    const history = JSON.parse(localStorage.getItem('ecotron_history') || '[]');
+    const newHistory = [...history, title].slice(-10); // Keep last 10
+    localStorage.setItem('ecotron_history', JSON.stringify(newHistory));
+    localStorage.setItem('ecotron_last_activity', Date.now().toString());
+  };
+
+  const openPrompt = (p: any) => {
+    setSelectedPrompt(p);
+    trackActivity(p.title);
   };
 
   const copyToClipboard = (text: string) => {
@@ -88,99 +94,89 @@ export default function Home() {
     setTimeout(() => setCopyStatus('Copy'), 2000);
   };
 
-  const usePrompt = (p: any) => {
-    setInput(p.content);
-    setSelectedPrompt(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    textareaRef.current?.focus();
-  };
-
   return (
     <main>
-      <title>Ecotron AI | Advanced Prompt Engine & Video Generation</title>
-      
+      <title>Ecotron AI | Neural Prompt Discovery Engine</title>
       <div className="bg-glow" />
       
       <div className="container">
-        {/* Language Badges Bar */}
         <div className="language-bar">
           <img src="https://img.shields.io/badge/English-Current-brightgreen" alt="English" />
-          <img src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-View-lightgrey" alt="Simplified Chinese" />
+          <img src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-View-lightgrey" alt="Chinese" />
           <img src="https://img.shields.io/badge/%E6%97%A5%E6%9C%AC%E8%AA%9E-View-lightgrey" alt="Japanese" />
           <img src="https://img.shields.io/badge/%ED%95%9C%EA%B5%AD%EC%96%B4-View-lightgrey" alt="Korean" />
           <img src="https://img.shields.io/badge/%E0%A4%B9%E0%A4%BF%E0%A4%A8%E0%A5%8D%E0%A4%A6%E0%A5%80-View-lightgrey" alt="Hindi" />
-          <img src="https://img.shields.io/badge/Espa%C3%B1ol-View-lightgrey" alt="Spanish" />
-          <img src="https://img.shields.io/badge/Fran%C3%A7ais-View-lightgrey" alt="French" />
-          <img src="https://img.shields.io/badge/T%C3%BCrk%C3%A7e-View-lightgrey" alt="Turkish" />
         </div>
 
         <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
 
-        <div style={{ textAlign: 'center', marginBottom: '4rem', marginTop: '2rem' }}>
+        <div className="hero-section">
           <h1 className="main-logo">ECOTRON <span style={{ color: 'var(--primary)' }}>AI</span></h1>
-          <p className="subtitle">Global Seedance 2.0 Video Hub & Advanced Prompt Engine.</p>
+          
+          <div className="quote-banner glass-card">
+            <span className="quote-label">QUOTE OF THE DAY</span>
+            <p className="quote-text">"{quote}"</p>
+          </div>
+
+          <form onSubmit={handleSearch} className="search-container">
+            <input 
+              type="text" 
+              placeholder="Search for styles, ideas, or topics using AI..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="neural-search-input"
+            />
+            <button type="submit" className="search-btn" disabled={loading}>
+              {loading ? 'Searching...' : 'NEURAL SEARCH'}
+            </button>
+          </form>
         </div>
 
         <div className="grid-layout">
           <section>
-            <div className="glass-card" style={{ marginBottom: '3rem' }}>
-              <div className="tool-bar">
-                <button className={`btn-outline ${activeTool === 'rewrite' ? 'active' : ''}`} onClick={() => setActiveTool('rewrite')}>Rewrite</button>
-                <button className={`btn-outline ${activeTool === 'summarize' ? 'active' : ''}`} onClick={() => setActiveTool('summarize')}>Summarize</button>
-                <button className={`btn-outline ${activeTool === 'email' ? 'active' : ''}`} onClick={() => setActiveTool('email')}>Email</button>
-                <button className={`btn-outline ${activeTool === 'calc' ? 'active' : ''}`} onClick={() => setActiveTool('calc')}>Calculator</button>
+            {/* RECOMMENDATIONS SECTION */}
+            {recommendations.length > 0 && !searchResults && (
+              <div className="rec-section">
+                <h3 className="section-title">Personalized for You</h3>
+                <div className="prompt-grid small-grid">
+                  {recommendations.map((p, i) => (
+                    <div key={i} className="glass-card prompt-item rec-item" onClick={() => openPrompt(p)}>
+                      <div className="prompt-info">
+                        <span className="prompt-cat">{p.category.toUpperCase()}</span>
+                        <h4 className="prompt-title">{p.title}</h4>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
 
-              <textarea 
-                ref={textareaRef}
-                placeholder={`Type your prompt idea... Enter to Send, Shift+Enter for New Line`}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-
-              <div className="action-buttons">
-                <button className="btn-primary" onClick={handleGenerate} disabled={loading || !input}>
-                  {loading ? 'Processing...' : `GENERATE OUTPUT`}
-                </button>
-                <button className="btn-outline refine-btn" onClick={handleRefine} disabled={refining || !input}>
-                  {refining ? 'Refining...' : `⚡ REFINE`}
-                </button>
-              </div>
-
-              {output && (
-                <div className="result-card glass-card">
-                  <div className="result-header">
-                    <h3>Result</h3>
-                    <button className="btn-outline" onClick={() => copyToClipboard(output)}>Copy</button>
-                  </div>
-                  <div className="result-text">{output}</div>
+            {/* SEARCH RESULTS OR FULL LIBRARY */}
+            <div className="library-header">
+              <h3 className="section-title">
+                {searchResults ? `Results for "${searchQuery}"` : 'Global Prompt Library'}
+              </h3>
+              {!searchResults && (
+                <div className="category-bar">
+                  <button className={`btn-outline ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
+                  <button className={`btn-outline ${activeCategory === 'Video' ? 'active' : ''}`} onClick={() => setActiveCategory('Video')}>🎬 Video</button>
+                  <button className={`btn-outline ${activeCategory === 'chatgpt' ? 'active' : ''}`} onClick={() => setActiveCategory('chatgpt')}>ChatGPT</button>
                 </div>
               )}
+              {searchResults && <button className="btn-outline" onClick={() => setSearchResults(null)}>Back to Library</button>}
             </div>
 
-            {/* CATEGORY BAR */}
-            <div className="category-bar">
-              <button className={`btn-outline ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
-              <button className={`btn-outline ${activeCategory === 'Video' ? 'active' : ''}`} onClick={() => setActiveCategory('Video')}>🎬 Video</button>
-              <button className={`btn-outline ${activeCategory === 'chatgpt' ? 'active' : ''}`} onClick={() => setActiveCategory('chatgpt')}>ChatGPT</button>
-              <button className={`btn-outline ${activeCategory === 'general' ? 'active' : ''}`} onClick={() => setActiveCategory('general')}>Nano Banana</button>
-            </div>
-
-            {/* PROMPT GRID */}
             <div className="prompt-grid">
-              {prompts.map((p, i) => (
+              {(searchResults || prompts).map((p, i) => (
                 <div key={i} className="prompt-item-container">
-                  <div className="glass-card prompt-item" onClick={() => setSelectedPrompt(p)}>
-                    {p.image_url && (
-                      <div className="prompt-img" style={{ backgroundImage: `url(${p.image_url})` }} />
-                    )}
+                  <div className="glass-card prompt-item" onClick={() => openPrompt(p)}>
+                    {p.image_url && <div className="prompt-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
                     <div className="prompt-info">
                       <span className="prompt-cat">{p.category.toUpperCase()}</span>
                       <h4 className="prompt-title">{p.title}</h4>
                     </div>
                   </div>
-                  {(i + 1) % 8 === 0 && (
+                  {(i + 1) % 12 === 0 && (
                     <div className="mobile-inline-ad">
                       <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
                     </div>
@@ -189,9 +185,9 @@ export default function Home() {
               ))}
             </div>
 
-            {page < totalPages && (
+            {!searchResults && page < 50 && (
               <button className="btn-outline load-more" onClick={() => { setPage(page + 1); fetchPrompts(page + 1, activeCategory); }}>
-                LOAD MORE PROMPTS
+                LOAD MORE
               </button>
             )}
           </section>
@@ -199,12 +195,10 @@ export default function Home() {
           <aside className="sticky-sidebar">
             <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
             <div className="sidebar-sticky-unit">
-              <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ marginBottom: '0.5rem' }}>Stats</h4>
-                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>
-                  <div>Total Prompts: 2,572+</div>
-                  <div>Last Updated: 2026-05-05</div>
-                </div>
+              <div className="glass-card sidebar-stat">
+                <h4>Platform Stats</h4>
+                <div className="stat-row"><span>Prompts</span> <span>2,572+</span></div>
+                <div className="stat-row"><span>Daily Views</span> <span>12.4k</span></div>
               </div>
               <AdBanner height={300} width={160} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
             </div>
@@ -214,7 +208,7 @@ export default function Home() {
         {selectedPrompt && (
           <div className="modal-overlay" onClick={() => setSelectedPrompt(null)}>
             <div className="modal-content glass-card" onClick={e => e.stopPropagation()}>
-              {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-img" alt={selectedPrompt.title} />}
+              {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-img" alt="" />}
               <div style={{ padding: '2.5rem' }}>
                 <div className="modal-header">
                   <div>
@@ -224,10 +218,7 @@ export default function Home() {
                   <button onClick={() => setSelectedPrompt(null)} className="close-btn">&times;</button>
                 </div>
                 <div className="modal-prompt-text">{selectedPrompt.content}</div>
-                <div className="modal-actions">
-                  <button className="btn-primary" onClick={() => usePrompt(selectedPrompt)}>Load into Hub</button>
-                  <button className="btn-outline" onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
-                </div>
+                <button className="btn-primary" style={{ width: '100%' }} onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
               </div>
             </div>
           </div>
@@ -235,56 +226,52 @@ export default function Home() {
 
         <footer>
           <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
-          <p>© 2026 ECOTRON AI. Global AI Intelligence.</p>
+          <p>© 2026 ECOTRON AI. Neural Discovery Engine.</p>
         </footer>
       </div>
 
       <style jsx>{`
-        .language-bar { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; opacity: 0.8; }
-        .language-bar img { height: 20px; cursor: pointer; transition: opacity 0.2s; }
-        .language-bar img:hover { opacity: 1; }
+        .hero-section { text-align: center; margin-bottom: 5rem; margin-top: 3rem; }
+        .quote-banner { max-width: 600px; margin: 2rem auto 3rem; padding: 1rem 2rem; border-radius: 50px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); }
+        .quote-label { font-size: 0.6rem; color: var(--primary); font-weight: 800; letter-spacing: 2px; }
+        .quote-text { font-size: 1.1rem; font-style: italic; opacity: 0.8; margin-top: 0.5rem; }
         
-        .main-logo { font-size: 3rem; letter-spacing: -0.02em; font-weight: 800; }
+        .search-container { position: relative; max-width: 800px; margin: 0 auto; display: flex; gap: 0.5rem; }
+        .neural-search-input { width: 100%; padding: 1.5rem 2rem; border-radius: 50px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); color: white; font-size: 1.1rem; transition: all 0.3s ease; }
+        .neural-search-input:focus { background: rgba(255,255,255,0.06); border-color: var(--primary); outline: none; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        .search-btn { padding: 0 2rem; border-radius: 50px; background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        .search-btn:hover { transform: scale(1.05); }
+
+        .rec-section { margin-bottom: 4rem; padding: 2rem; background: rgba(255,255,255,0.02); border-radius: 20px; border: 1px solid var(--glass-border); }
+        .section-title { font-size: 1.5rem; margin-bottom: 2rem; letter-spacing: -0.01em; }
+        .small-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important; gap: 1rem !important; }
+        .rec-item { padding: 1rem !important; min-height: auto !important; }
+        
+        .main-logo { font-size: 4rem; font-weight: 900; letter-spacing: -0.05em; }
         .grid-layout { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; }
-        .sticky-sidebar { display: flex; flex-direction: column; gap: 2rem; }
-        .sidebar-sticky-unit { position: sticky; top: 2rem; }
-        
-        .tool-bar { display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; }
-        textarea { margin-bottom: 1.5rem; min-height: 180px; }
-        .action-buttons { display: flex; gap: 1rem; }
-        .refine-btn { flex: 1; border-color: var(--accent); color: var(--accent); }
-        .result-card { background: rgba(59, 130, 246, 0.05); margin-top: 2rem; border-color: var(--primary); }
-        .result-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
-        .result-text { white-space: pre-wrap; color: rgba(255,255,255,0.9); }
-        
-        .category-bar { margin-bottom: 2rem; display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+        .sidebar-stat { padding: 1.5rem; margin-bottom: 1.5rem; }
+        .stat-row { display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.9rem; opacity: 0.6; }
+
         .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-        .prompt-item { padding: 0; cursor: pointer; overflow: hidden; height: 100%; display: flex; flex-direction: column; transition: transform 0.2s ease; }
-        .prompt-item:hover { transform: translateY(-5px); }
+        .prompt-item { padding: 0; cursor: pointer; overflow: hidden; height: 100%; display: flex; flex-direction: column; transition: all 0.3s ease; }
         .prompt-img { height: 200px; width: 100%; background-position: center; background-size: cover; }
         .prompt-info { padding: 1.5rem; flex-grow: 1; }
-        .prompt-cat { font-size: 0.7rem; color: var(--primary); font-weight: bold; letter-spacing: 0.05em; }
+        .prompt-cat { font-size: 0.7rem; color: var(--primary); font-weight: bold; }
         .prompt-title { margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.4; }
-        .load-more { width: 100%; margin-top: 3rem; padding: 1.5rem; }
-
-        .mobile-inline-ad { display: none; }
 
         @media (max-width: 992px) {
           .grid-layout { grid-template-columns: 1fr; }
           .sticky-sidebar { display: none; }
-          .mobile-inline-ad { display: flex; justify-content: center; margin: 1rem 0; width: 100%; grid-column: 1 / -1; }
+          .main-logo { font-size: 3rem; }
+          .search-container { flex-direction: column; }
+          .search-btn { padding: 1.2rem; }
         }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); backdrop-filter: blur(15px); z-index: 1000; display: flex; justify-content: center; alignItems: center; padding: 2rem; }
-        .modal-content { max-width: 800px; width: 100%; max-height: 95vh; overflow-y: auto; background: #070707; padding: 0; border: 1px solid var(--glass-border); }
-        .modal-img { width: 100%; height: auto; max-height: 450px; object-fit: cover; border-bottom: 1px solid var(--glass-border); }
-        .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; }
+        .modal-content { max-width: 800px; width: 100%; max-height: 95vh; overflow-y: auto; background: #070707; padding: 0; }
+        .modal-img { width: 100%; height: auto; max-height: 450px; object-fit: cover; }
         .modal-prompt-text { background: rgba(255,255,255,0.03); padding: 2rem; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 2.5rem; font-size: 1.15rem; line-height: 1.7; color: #fff; }
-        .modal-actions { display: flex; gap: 1rem; }
-        .close-btn { background: none; border: none; color: white; cursor: pointer; font-size: 2.5rem; line-height: 1; }
-
-        footer { margin-top: 8rem; padding-bottom: 4rem; text-align: center; border-top: 1px solid var(--glass-border); padding-top: 4rem; }
-        footer p { opacity: 0.3; font-size: 0.8rem; margin-top: 2rem; }
+        .close-btn { background: none; border: none; color: white; cursor: pointer; font-size: 2.5rem; }
       `}</style>
     </main>
   );

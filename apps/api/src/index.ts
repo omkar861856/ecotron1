@@ -1,19 +1,16 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import redis from '@fastify/redis';
-import axios from 'axios';
 import { z } from 'zod';
 import { Pool } from 'pg';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import cron from 'node-cron';
 import * as Minio from 'minio';
-import fs from 'fs';
 import path from 'path';
 
 const fastify = Fastify({ logger: true });
 
 // Configuration
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434/api/generate';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const pool = new Pool({
@@ -54,140 +51,97 @@ const initDB = async () => {
         is_generated BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    `);
-    
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS generations (
-        id SERIAL PRIMARY KEY,
-        prompt_id INTEGER REFERENCES prompts(id),
-        status TEXT,
-        error_msg TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      
+      CREATE TABLE IF NOT EXISTS site_data (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-
-    // Ensure MinIO bucket exists
-    const bucketExists = await minioClient.bucketExists(BUCKET_NAME);
-    if (!bucketExists) {
-      await minioClient.makeBucket(BUCKET_NAME, 'us-east-1');
-      // Set bucket to public read
-      const policy = {
-        Version: "2012-10-17",
-        Statement: [{
-          Effect: "Allow",
-          Principal: { AWS: ["*"] },
-          Action: ["s3:GetBucketLocation", "s3:ListBucket"],
-          Resource: [`arn:aws:s3:::${BUCKET_NAME}`],
-        }, {
-          Effect: "Allow",
-          Principal: { AWS: ["*"] },
-          Action: ["s3:GetObject"],
-          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
-        }],
-      };
-      await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
-    }
-  } catch (err) {
-    console.error('DB/Minio Init Error:', err);
   } finally {
     client.release();
   }
 };
 
-// --- IMAGE GENERATION (NANO BANANA) ---
-
-const generateImage = async (promptId: number, promptText: string) => {
+// --- AI QUOTE (Every 12 Hours) ---
+const generateQuote = async () => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-image-preview" });
-    const result = await model.generateContent([`Create a high-fidelity preview image for this AI prompt: ${promptText}. Style: Professional, clean.`]);
-    const response = await result.response;
-    
-    const part = response.candidates![0].content.parts.find(p => p.inlineData);
-    if (part && part.inlineData) {
-      const fileName = `prompt_${promptId}_${Date.now()}.png`;
-      const buffer = Buffer.from(part.inlineData.data, 'base64');
-      
-      // Upload to MinIO
-      await minioClient.putObject(BUCKET_NAME, fileName, buffer, buffer.length, { 'Content-Type': 'image/png' });
-      
-      const publicUrl = `https://api.ecotron.co.in/cdn/${fileName}`;
-      await pool.query('UPDATE prompts SET image_url = $1, is_generated = TRUE WHERE id = $2', [publicUrl, promptId]);
-      await pool.query('INSERT INTO generations (prompt_id, status) VALUES ($1, $2)', [promptId, 'success']);
-      return publicUrl;
-    }
-  } catch (error: any) {
-    console.error('Image Gen Error:', error);
-    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'error', error.message]);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent("Write a short, inspiring quote about AI and human creativity (max 15 words).");
+    const quote = result.response.text().trim();
+    await pool.query('INSERT INTO site_data (key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()', ['quote_of_day', quote]);
+    console.log('Quote updated:', quote);
+  } catch (err) {
+    console.error('Quote Gen Error:', err);
   }
 };
 
-// --- CRON JOB (Every 4 Hours) ---
-cron.schedule('0 */4 * * *', async () => {
-  console.log('Running 4-hour Image Generation Cron...');
-  const { rows } = await pool.query('SELECT id, content FROM prompts WHERE is_generated = FALSE ORDER BY RANDOM() LIMIT 1');
-  if (rows.length > 0) {
-    await generateImage(rows[0].id, rows[0].content);
-  }
-});
-
-// Bulk Generation for Admin
-fastify.post('/api/admin/bulk-generate', async (request, reply) => {
-  const { rows } = await pool.query('SELECT id, content FROM prompts WHERE is_generated = FALSE LIMIT 100');
-  
-  // Running in background to not block the request
-  (async () => {
-    for (const row of rows) {
-      await generateImage(row.id, row.content);
-      // Short delay to respect quotas
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  })();
-  
-  return { message: `Started background generation for ${rows.length} prompts.` };
-});
+cron.schedule('0 */12 * * *', generateQuote);
 
 // --- ROUTES ---
+
+// Get Quote
+fastify.get('/api/quote', async () => {
+  const { rows } = await pool.query('SELECT value FROM site_data WHERE key = $1', ['quote_of_day']);
+  return { quote: rows[0]?.value || "Creativity is the bridge between AI and humanity." };
+});
+
+// AI Search
+fastify.post('/api/search', async (request) => {
+  const { query } = z.object({ query: z.string() }).parse(request.body);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  
+  // 1. Ask AI for relevant categories and keywords
+  const aiAnalysis = await model.generateContent(`Analyze this search query: "${query}". Return only 3-5 keywords or categories that best match it from an AI prompt library. Format: keyword1, keyword2...`);
+  const keywords = aiAnalysis.response.text().split(',').map(k => k.trim());
+  
+  // 2. Search DB using AI keywords + original query
+  let sql = 'SELECT * FROM prompts WHERE ';
+  const conditions = keywords.map((_, i) => `title ILIKE $${i + 1} OR category ILIKE $${i + 1}`).join(' OR ');
+  sql += conditions + ` OR title ILIKE $${keywords.length + 1} LIMIT 30`;
+  
+  const { rows } = await pool.query(sql, [...keywords, `%${query}%`]);
+  return rows;
+});
+
+// AI Recommendations (based on recent history)
+fastify.post('/api/recommendations', async (request) => {
+  const { history } = z.object({ history: z.array(z.string()) }).parse(request.body);
+  if (history.length === 0) return [];
+  
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const prompt = `Based on these recently viewed AI prompt titles: ${history.join(', ')}. What are the 3 most relevant prompt categories or topics this user would like? Return only the category names separated by commas.`;
+  
+  const aiRec = await model.generateContent(prompt);
+  const categories = aiRec.response.text().split(',').map(c => c.trim());
+  
+  const { rows } = await pool.query('SELECT * FROM prompts WHERE category = ANY($1) LIMIT 12', [categories]);
+  return rows;
+});
 
 // Paginated Prompts
 fastify.get('/api/prompts', async (request) => {
   const { page = 1, limit = 24, category = 'all' } = request.query as any;
   const offset = (page - 1) * limit;
-  
   let query = 'SELECT * FROM prompts';
   let params = [];
-  
   if (category !== 'all') {
-    query += ' WHERE category = $1';
-    params.push(category);
-    query += ` ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
-    params.push(limit, offset);
+    query += ' WHERE category = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3';
+    params.push(category, limit, offset);
   } else {
-    query += ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`;
+    query += ' ORDER BY created_at DESC LIMIT $1 OFFSET $2';
     params.push(limit, offset);
   }
-
   const { rows } = await pool.query(query, params);
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM prompts' + (category !== 'all' ? ' WHERE category = $1' : ''), category !== 'all' ? [category] : []);
-  
-  return {
-    data: rows,
-    total: parseInt(countRows[0].count),
-    page: parseInt(page),
-    totalPages: Math.ceil(parseInt(countRows[0].count) / limit)
-  };
+  return { data: rows, page: parseInt(page) };
 });
 
-// Refine Prompt with Guardrails
-fastify.post('/api/refine', async (request, reply) => {
-  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  
-  const systemPrompt = `Refine the user's raw prompt into a highly detailed, professional prompt for Nano Banana. Original: ${prompt}`;
-  const result = await model.generateContent(systemPrompt);
-  return { result: result.response.text() };
+// Admin generations check
+fastify.get('/api/admin/generations', async (request, reply) => {
+  const { rows } = await pool.query('SELECT g.*, p.title FROM generations g JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC');
+  return rows;
 });
 
-// Serve images via MinIO Proxy
 fastify.get('/cdn/:filename', async (request, reply) => {
   const { filename } = request.params as { filename: string };
   try {
@@ -198,41 +152,6 @@ fastify.get('/cdn/:filename', async (request, reply) => {
   }
 });
 
-// Admin generations check
-fastify.get('/api/admin/generations', async (request, reply) => {
-  const { rows } = await pool.query('SELECT g.*, p.title FROM generations g JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC');
-  return rows;
-});
-
-// Standard AI Routes
-fastify.post('/api/email', async (request, reply) => {
-  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`Professional Email Generator: ${prompt}`);
-  return { result: result.response.text() };
-});
-
-fastify.post('/api/calc', async (request, reply) => {
-  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`AI Calculator & Solver: ${prompt}`);
-  return { result: result.response.text() };
-});
-
-fastify.post('/api/rewrite', async (request, reply) => {
-  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`Professional Rewrite: ${prompt}`);
-  return { result: result.response.text() };
-});
-
-fastify.post('/api/summarize', async (request, reply) => {
-  const { prompt } = z.object({ prompt: z.string() }).parse(request.body);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`Summarize: ${prompt}`);
-  return { result: result.response.text() };
-});
-
 fastify.get('/health', async () => ({ status: 'ok' }));
 
 const start = async () => {
@@ -240,6 +159,8 @@ const start = async () => {
     await initDB();
     await fastify.listen({ port: 3001, host: '0.0.0.0' });
     console.log('Server started on port 3001');
+    // Initial quote
+    generateQuote();
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
