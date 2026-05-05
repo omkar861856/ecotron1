@@ -28,3 +28,7 @@ jobs:
           fi
           docker network create ecotron-network || true
           docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          echo "Waiting for Ollama to be ready..."
+          sleep 10
+          docker exec ollama ollama pull llama3.1:8b
+          docker exec ollama ollama pull qwen2.5:7b

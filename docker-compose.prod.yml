@@ -1,21 +1,4 @@
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
-    container_name: ecotron-web
-    restart: always
-    environment:
-      - NODE_ENV=production
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`ecotron.co.in`) || Host(`www.ecotron.co.in`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=myresolver"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
-    networks:
-      - ecotron-network
-
   traefik:
     image: traefik:v3.1
     container_name: traefik
@@ -38,6 +21,73 @@ services:
     networks:
       - ecotron-network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ecotron-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Fallback if no GPU is present: it will run on CPU
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecotron-redis
+    restart: always
+    networks:
+      - ecotron-network
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: ecotron-api
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - OLLAMA_URL=http://ollama:11434/api/generate
+      - REDIS_URL=redis://redis:6379
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(\`api.ecotron.co.in\`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=myresolver"
+      - "traefik.http.services.api.loadbalancer.server.port=3001"
+    depends_on:
+      - ollama
+      - redis
+    networks:
+      - ecotron-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: ecotron-web
+    restart: always
+    environment:
+      - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(\`ecotron.co.in\`) || Host(\`www.ecotron.co.in\`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=myresolver"
+      - "traefik.http.services.web.loadbalancer.server.port=3000"
+    networks:
+      - ecotron-network
+
 networks:
   ecotron-network:
-    external: true
+    driver: bridge
+
+volumes:
+  ollama_data:
+  letsencrypt:
