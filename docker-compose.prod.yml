@@ -72,6 +72,12 @@ services:
       - NODE_ENV=production
     labels:
       - "traefik.enable=true"
+      # HTTP Router (Redirect to HTTPS)
+      - "traefik.http.routers.web-http.rule=Host(`ecotron.co.in`) || Host(`play.ecotron.co.in`)"
+      - "traefik.http.routers.web-http.entrypoints=web"
+      - "traefik.http.routers.web-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      # HTTPS Router
       - "traefik.http.routers.web.rule=Host(`ecotron.co.in`) || Host(`play.ecotron.co.in`)"
       - "traefik.http.routers.web.entrypoints=websecure"
       - "traefik.http.routers.web.tls.certresolver=myresolver"
