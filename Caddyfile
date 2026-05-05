@@ -1,19 +1,12 @@
 ecotron.co.in, www.ecotron.co.in, play.ecotron.co.in, api.ecotron.co.in, srv.ecotron.co.in {
     tls internal
-    reverse_proxy {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        
-        to ecotron-web:3000
-        # Route API subdomains to the API container
-        @api host api.ecotron.co.in srv.ecotron.co.in
-        handle @api {
-            reverse_proxy ecotron-api:3001
-        }
-        
-        # Route everything else to the Web container
-        handle {
-            reverse_proxy ecotron-web:3000
-        }
+
+    @api host api.ecotron.co.in srv.ecotron.co.in
+    handle @api {
+        reverse_proxy ecotron-api:3001
+    }
+
+    handle {
+        reverse_proxy ecotron-web:3000
     }
 }
