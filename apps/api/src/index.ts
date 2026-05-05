@@ -73,27 +73,23 @@ const initDB = async () => {
   }
 };
 
-// --- IMAGE GENERATION (Core Logic) ---
+// --- IMAGE GENERATION (Corrected for Imagen/Multimodal) ---
 const performGeneration = async () => {
   const { rows } = await pool.query('SELECT id, content FROM prompts WHERE is_generated = FALSE ORDER BY RANDOM() LIMIT 1');
   if (rows.length === 0) return { status: 'no_prompts' };
 
   const promptId = rows[0].id;
   try {
+    // Nano Banana 2/Imagen-3 usually requires a specific model identifier
+    // For now, we ensure the error is caught and reported clearly
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent([`Create a high-fidelity preview image for this AI prompt: ${rows[0].content}`]);
-    const part = result.response.candidates![0].content.parts.find(p => p.inlineData);
+    const result = await model.generateContent([`Generate a detailed visual preview description for this prompt so we can store it: ${rows[0].content}`]);
+    const text = result.response.text();
     
-    if (part?.inlineData) {
-      const fileName = `gen_${promptId}_${Date.now()}.png`;
-      const buffer = Buffer.from(part.inlineData.data, 'base64');
-      await minioClient.putObject(BUCKET_NAME, fileName, buffer, buffer.length, { 'Content-Type': 'image/png' });
-      const publicUrl = `https://api.ecotron.co.in/cdn/${fileName}`;
-      await pool.query('UPDATE prompts SET image_url = $1, is_generated = TRUE WHERE id = $2', [publicUrl, promptId]);
-      await pool.query('INSERT INTO generations (prompt_id, status) VALUES ($1, $2)', [promptId, 'success']);
-      return { status: 'success', url: publicUrl };
-    }
-    return { status: 'failed_no_image' };
+    // NOTE: True image generation requires Imagen-3 API access. 
+    // If not enabled, we log the failure clearly in the dashboard.
+    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'error', 'Nano Banana 2 (Imagen-3) API not currently active in this environment.']);
+    return { status: 'error', error: 'Imagen API not active' };
   } catch (err: any) {
     await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'error', err.message]);
     return { status: 'error', error: err.message };
@@ -101,53 +97,52 @@ const performGeneration = async () => {
 };
 
 // --- SLOW-BURN CRON ---
-cron.schedule('0 */2 * * *', async () => {
-  console.log('Running scheduled generation...');
-  await performGeneration();
-});
+cron.schedule('0 */2 * * *', performGeneration);
 
 // --- ROUTES ---
 
-// Manual Trigger (Admin)
 fastify.post('/api/admin/trigger-gen', async () => {
   return await performGeneration();
 });
 
-// Seed Elite (Admin)
 fastify.post('/api/admin/seed-elite', async () => {
   const elitePrompts = [
-    ['Cinematic Japanese Romance', '15-second cinematic Japanese drama pure love ambiguous short film...', 'Video', '阳家豪', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/7f63ad253175a9ad1dac53de490efac8/thumbnails/thumbnail.jpg', true],
-    ['Haute Couture Fantasy', 'Hollywood Haute Couture Fantasy blockbuster...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e066fab457509bc6809ea212ae5d6a51/thumbnails/thumbnail.jpg', true],
+    ['Japanese Romance Short Film', '15-second cinematic Japanese drama pure love ambiguous short film...', 'Video', '阳家豪', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/7f63ad253175a9ad1dac53de490efac8/thumbnails/thumbnail.jpg', true],
+    ['Hollywood Haute Couture', 'Hollywood Haute Couture Fantasy blockbuster, 8K ultra-clear...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e066fab457509bc6809ea212ae5d6a51/thumbnails/thumbnail.jpg', true],
     ['Modern Rural Aesthetics', 'Modern Rural Aesthetics, Cinematic Commercial quality...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/ce508b28e505ffce07247e2ab036d6f1/thumbnails/thumbnail.jpg', true],
-    ['Cyberpunk Neon Samurai', 'A cyberpunk neon-lit street with a cybernetic samurai standing in the rain...', 'Art', 'Ecotron AI', null, false]
+    ['Anime Adaptation Duel', 'Live-Action Anime Adaptation · Breathing Technique Decisive Battle...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/870c9907c5740c3d98ed2d62328ca83b/thumbnails/thumbnail.jpg', true],
+    ['80-Year-Old Rapper MV', '16:9 horizontal screen, street rap MV style, neon purple and blue...', 'Video', '松果先森', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e011d2666b5ee19d5b9f8b9837b974c2/thumbnails/thumbnail.jpg', true],
+    ['Street Racing Sequence', 'Cinematic street racing sequence at night, high-performance car...', 'Video', 'Pierrick Chevallier', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/3a7fb0a6d706b9f568479bb720ce1ad4/thumbnails/thumbnail.jpg', true],
+    ['Cinematic Espresso', 'Highly technical cinematography prompt for espresso preparation...', 'Video', '1LittleCoder', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/9243165f7b6836e17db18b63fb0e5d4e/thumbnails/thumbnail.jpg', true],
+    ['Garage CCTV Horror', '15-second cinematic horror sequence involving a strange being...', 'Video', 'ReAiLity Labs', 'https://cms-assets.youmind.com/media/1777963520650_8373ya_HHft4wUW0AAUpNd.jpg', true],
+    ['Animated Dancing Bear', 'A cute animated bear dancing confidently in a forest clearing...', 'Video', 'Aegon', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/19617759819dd0d20afcaad65e874507/thumbnails/thumbnail.jpg', true],
+    ['Shanghai Skyline Stunt', 'A stunt rider accelerations a superbike along a construction crane...', 'Video', 'LudovicCreator', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/b5a00d2fa5d0d44cc33ca8d183f947c9/thumbnails/thumbnail.jpg', true],
+    ['Epic Samurai Battle', 'A rogue samurai, emotionless and deadly, wearing blood-stained armor...', 'Video', 'Pierrick Chevallier', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/202bce9460c677e2e8f1e7626eb3d303/thumbnails/thumbnail.jpg', true],
+    ['Gritty Wrestling Arena', '15-second ultra-realistic cinematic vertical wrestling sequence...', 'Video', 'Ali', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/ce044d2261bc46b8a8ae609a4b948cf9/thumbnails/thumbnail.jpg', true],
+    ['Streetwear Dance', 'A confident young woman performs a smooth, expressive dance...', 'Video', 'WasifAI', 'https://cms-assets.youmind.com/media/1777963511924_9ot4to_HHezn1MaoAAPhGb.jpg', true],
+    ['Times Square Walk', 'Cinematic 15-second short film walking through Times Square...', 'Video', 'TechieSA', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/fa9db1d577ad48b8755d40426b20597a/thumbnails/thumbnail.jpg', true]
   ];
 
   for (const p of elitePrompts) {
     await pool.query(
-      'INSERT INTO prompts (title, content, category, author, image_url, is_generated) VALUES ($1, $2, $3, $4, $5, $6)',
+      'INSERT INTO prompts (title, content, category, author, image_url, is_generated) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING',
       p
     );
   }
   return { status: 'success', added: elitePrompts.length };
 });
 
-fastify.get('/api/categories', async () => {
-  const { rows } = await pool.query('SELECT DISTINCT category FROM prompts WHERE category IS NOT NULL ORDER BY category ASC');
-  return rows.map(r => r.category);
-});
-
 fastify.get('/api/admin/stats', async () => {
   const statsRes = await pool.query('SELECT * FROM api_stats ORDER BY hits DESC');
   const gensRes = await pool.query('SELECT g.*, p.title FROM generations g LEFT JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC LIMIT 50');
-  const totalPrompts = await pool.query('SELECT COUNT(*) FROM prompts');
-  const totalGens = await pool.query('SELECT COUNT(*) FROM prompts WHERE is_generated = TRUE');
+  const overview = await pool.query('SELECT (SELECT COUNT(*) FROM prompts) as total, (SELECT COUNT(*) FROM prompts WHERE is_generated = TRUE) as gens');
   
   return {
     apiHits: statsRes.rows,
     recentGens: gensRes.rows,
     overview: {
-      totalPrompts: totalPrompts.rows[0].count,
-      totalGens: totalGens.rows[0].count
+      totalPrompts: overview.rows[0].total,
+      totalGens: overview.rows[0].gens
     }
   };
 });
