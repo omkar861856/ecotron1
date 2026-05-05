@@ -9,7 +9,6 @@ export default function Home() {
   const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Prompt Library State
   const [prompts, setPrompts] = useState<any[]>([]);
   const [showPromptForm, setShowPromptForm] = useState(false);
   const [newPrompt, setNewPrompt] = useState({ title: '', content: '' });
@@ -71,17 +70,9 @@ export default function Home() {
       
       <div className="container">
         {/* TOP AD: 728x90 */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4rem' }}>
-          <AdBanner 
-            id="ad-top" 
-            format="iframe" 
-            height={90} 
-            width={728} 
-            key="c25ecd0c0fe9d93f6cf66f0016cbd198" 
-          />
-        </div>
+        <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
 
-        <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '4rem', marginTop: '2rem' }}>
           <h1>ECOTRON AI</h1>
           <p className="subtitle">Daily problems solved in seconds. Fast. Secure. Instant.</p>
         </div>
@@ -117,7 +108,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* PROMPT LIBRARY SECTION */}
             <div className="glass-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h2>📚 Community Prompt Library</h2>
@@ -130,7 +120,7 @@ export default function Home() {
                 <div className="glass-card" style={{ background: 'rgba(255,255,255,0.05)', marginBottom: '2rem' }}>
                   <input 
                     type="text" 
-                    placeholder="Prompt Title (e.g. Best Email Opener)" 
+                    placeholder="Prompt Title" 
                     style={{ width: '100%', background: 'transparent', border: '1px solid var(--glass-border)', padding: '0.75rem', borderRadius: '8px', color: 'white', marginBottom: '1rem' }}
                     value={newPrompt.title}
                     onChange={(e) => setNewPrompt({ ...newPrompt, title: e.target.value })}
@@ -141,13 +131,13 @@ export default function Home() {
                     value={newPrompt.content}
                     onChange={(e) => setNewPrompt({ ...newPrompt, content: e.target.value })}
                   />
-                  <button className="btn-primary" onClick={handleAddPrompt}>Publish to Community</button>
+                  <button className="btn-primary" onClick={handleAddPrompt}>Publish</button>
                 </div>
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                 {prompts.map((p, i) => (
-                  <div key={i} className="glass-card" style={{ padding: '1rem', fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => setInput(p.content)}>
+                  <div key={i} className="glass-card" style={{ padding: '1rem', fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => { setInput(p.content); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                     <h4 style={{ marginBottom: '0.5rem' }}>{p.title}</h4>
                     <p style={{ opacity: 0.6, fontSize: '0.75rem' }}>By {p.author}</p>
                   </div>
@@ -157,49 +147,25 @@ export default function Home() {
           </section>
 
           <aside>
-            {/* SIDEBAR AD: 300x250 */}
-            <div style={{ marginBottom: '2rem' }}>
-              <AdBanner 
-                id="ad-sidebar" 
-                format="iframe" 
-                height={250} 
-                width={300} 
-                key="eca2cd8a7fd561c8d9ddc9b4e1302ac9" 
-              />
-            </div>
+            <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
 
-            <div className="glass-card" style={{ marginBottom: '2rem' }}>
+            <div className="glass-card" style={{ marginBottom: '2rem', marginTop: '2rem' }}>
               <h3>Instant ROI</h3>
               <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.5rem' }}>
                 Why wait for ChatGPT? Use our focused tools for instant results with zero fluff.
               </p>
             </div>
             
-            {/* STICKY AD: 160x300 */}
             <div style={{ position: 'sticky', top: '2rem' }}>
-              <AdBanner 
-                id="ad-sticky" 
-                format="iframe" 
-                height={300} 
-                width={160} 
-                key="7f1e1c3d11870c7899ccce329cdd56e9" 
-              />
+              <AdBanner height={300} width={160} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
             </div>
           </aside>
         </div>
 
         <footer style={{ marginTop: '6rem', paddingBottom: '4rem', textAlign: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '3rem' }}>
-            <AdBanner 
-              id="ad-footer" 
-              format="iframe" 
-              height={90} 
-              width={728} 
-              key="c25ecd0c0fe9d93f6cf66f0016cbd198" 
-            />
-          </div>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
-            © 2026 ECOTRON AI Platform. All rights reserved. Built for speed.
+          <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', marginTop: '2rem' }}>
+            © 2026 ECOTRON AI Platform. All rights reserved.
           </p>
         </footer>
       </div>
