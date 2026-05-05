@@ -17,10 +17,10 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          mkdir -p /home/${{ secrets.SERVER_USER }}/ecotron/letsencrypt
-          touch /home/${{ secrets.SERVER_USER }}/ecotron/letsencrypt/acme.json
-          chmod 600 /home/${{ secrets.SERVER_USER }}/ecotron/letsencrypt/acme.json
-          cd /home/${{ secrets.SERVER_USER }}/ecotron
+          mkdir -p /root/ecotron/letsencrypt
+          touch /root/ecotron/letsencrypt/acme.json
+          chmod 600 /root/ecotron/letsencrypt/acme.json
+          cd /root/ecotron
           if [ ! -d ".git" ]; then
             rm -rf ./*
             git clone https://github.com/omkar861856/ecotron1.git .
