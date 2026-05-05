@@ -68,11 +68,7 @@ export default function Admin() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
         <div>
           <h1>ADMIN DASHBOARD</h1>
-          <p style={{ opacity: 0.5 }}>Monitoring Ecotron AI Generations</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          {bulkStatus && <span style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>{bulkStatus}</span>}
-          <button className="btn-primary" onClick={startBulkGen}>🚀 Start Bulk Generation (Next 100)</button>
+          <p style={{ opacity: 0.5 }}>Monitoring Ecotron AI Generations (1 per 2 hours)</p>
         </div>
       </div>
 
