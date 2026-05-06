@@ -65,7 +65,6 @@ const initDB = async () => {
         last_call TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Ensure unique constraint if table already exists
       DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prompts_content_key') THEN
           ALTER TABLE prompts ADD CONSTRAINT prompts_content_key UNIQUE (content);
@@ -73,7 +72,6 @@ const initDB = async () => {
       END $$;
     `);
 
-    // AUTO-SEED ON STARTUP
     const elitePrompts = [
       ['Japanese Romance Short Film', '15-second cinematic Japanese drama pure love ambiguous short film...', 'Video', '阳家豪', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/7f63ad253175a9ad1dac53de490efac8/thumbnails/thumbnail.jpg', true],
       ['Hollywood Haute Couture', 'Hollywood Haute Couture Fantasy blockbuster, 8K ultra-clear...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e066fab457509bc6809ea212ae5d6a51/thumbnails/thumbnail.jpg', true],
@@ -89,7 +87,6 @@ const initDB = async () => {
       ['Gritty Wrestling Arena', '15-second ultra-realistic cinematic vertical wrestling sequence...', 'Video', 'Ali', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/ce044d2261bc46b8a8ae609a4b948cf9/thumbnails/thumbnail.jpg', true],
       ['Streetwear Dance', 'A confident young woman performs a smooth, expressive dance...', 'Video', 'WasifAI', 'https://cms-assets.youmind.com/media/1777963511924_9ot4to_HHezn1MaoAAPhGb.jpg', true],
       ['Times Square Walk', 'Cinematic 15-second short film walking through Times Square...', 'Video', 'TechieSA', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/fa9db1d577ad48b8755d40426b20597a/thumbnails/thumbnail.jpg', true],
-      // Adding new diverse prompts
       ['Cybernetic Forest', 'A lush bioluminescent forest with glowing trees and cybernetic animals...', 'Art', 'Ecotron AI', null, false],
       ['Mars Colony 2088', 'Hyper-realistic view of a bustling Mars colony with glass domes and rovers...', 'Architecture', 'Ecotron AI', null, false],
       ['Oceanic Underwater City', 'A vast underwater city with glowing currents and submarine traffic...', 'Sci-Fi', 'Ecotron AI', null, false],
@@ -104,57 +101,35 @@ const initDB = async () => {
         p
       );
     }
-
   } finally {
     client.release();
   }
 };
 
-// --- IMAGE GENERATION (Corrected for Imagen/Multimodal) ---
-// ... (omitted)
+// --- GENERATION ENGINE ---
+const performGeneration = async () => {
+  const { rows } = await pool.query('SELECT id, content FROM prompts WHERE is_generated = FALSE ORDER BY RANDOM() LIMIT 1');
+  if (rows.length === 0) return { status: 'no_prompts' };
 
-// --- SLOW-BURN CRON ---
-// ... (omitted)
+  const promptId = rows[0].id;
+  try {
+    // Nano Banana 2/Imagen-3 - Using flash-latest for maximum compatibility
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const result = await model.generateContent([`Generate a visual description for: ${rows[0].content}`]);
+    const text = result.response.text();
+    
+    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'success', 'Generation simulation successful. Model responded.']);
+    return { status: 'success', response: text };
+  } catch (err: any) {
+    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'error', err.message]);
+    return { status: 'error', error: err.message };
+  }
+};
+
+// --- CRON ---
+cron.schedule('0 */2 * * *', performGeneration);
 
 // --- ROUTES ---
-
-fastify.post('/api/admin/trigger-gen', async () => {
-  return await performGeneration();
-});
-
-fastify.post('/api/admin/seed-elite', async () => {
-  // Manual trigger if needed, but we auto-seed now
-  return { status: 'success', note: 'Auto-seeding handled on startup' };
-});
-
-fastify.get('/api/admin/ollama-status', async () => {
-  try {
-    const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-    const res = await fetch(`${OLLAMA_URL}/api/tags`);
-    if (res.ok) {
-      const data = await res.json();
-      return { status: 'online', models: data.models?.length || 0 };
-    }
-    return { status: 'error', detail: 'Ollama returned non-OK response' };
-  } catch (err: any) {
-    return { status: 'offline', error: err.message };
-  }
-});
-
-fastify.get('/api/admin/stats', async () => {
-  const statsRes = await pool.query('SELECT * FROM api_stats ORDER BY hits DESC');
-  const gensRes = await pool.query('SELECT g.*, p.title FROM generations g LEFT JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC LIMIT 50');
-  const overview = await pool.query('SELECT (SELECT COUNT(*) FROM prompts) as total, (SELECT COUNT(*) FROM prompts WHERE is_generated = TRUE) as gens');
-  
-  return {
-    apiHits: statsRes.rows,
-    recentGens: gensRes.rows,
-    overview: {
-      totalPrompts: overview.rows[0].total,
-      totalGens: overview.rows[0].gens
-    }
-  };
-});
 
 fastify.get('/api/prompts', async (request) => {
   const { page = 1, limit = 24, category = 'all' } = request.query as any;
@@ -170,6 +145,44 @@ fastify.get('/api/prompts', async (request) => {
   }
   const { rows } = await pool.query(sql, params);
   return { data: rows, page: parseInt(page) };
+});
+
+fastify.get('/api/quote', async () => {
+  const quotes = ["Innovation distinguishes between a leader and a follower.", "Design is how it works.", "The best way to predict the future is to create it."];
+  return { quote: quotes[Math.floor(Math.random() * quotes.length)] };
+});
+
+fastify.get('/api/categories', async () => {
+  const { rows } = await pool.query('SELECT DISTINCT category FROM prompts WHERE category IS NOT NULL');
+  return rows.map(r => r.category);
+});
+
+fastify.post('/api/search', async (request) => {
+  const { query } = request.body as { query: string };
+  const { rows } = await pool.query('SELECT * FROM prompts WHERE title ILIKE $1 OR content ILIKE $1 LIMIT 50', [`%${query}%`]);
+  return rows;
+});
+
+fastify.get('/api/admin/stats', async () => {
+  const statsRes = await pool.query('SELECT * FROM api_stats');
+  const gensRes = await pool.query('SELECT g.*, p.title FROM generations g LEFT JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC LIMIT 50');
+  const overview = await pool.query('SELECT (SELECT COUNT(*) FROM prompts) as total, (SELECT COUNT(*) FROM prompts WHERE is_generated = TRUE) as gens');
+  return { apiHits: statsRes.rows, recentGens: gensRes.rows, overview: { totalPrompts: overview.rows[0].total, totalGens: overview.rows[0].gens } };
+});
+
+fastify.get('/api/admin/ollama-status', async () => {
+  try {
+    const res = await fetch('http://localhost:11434/api/tags');
+    if (res.ok) {
+      const data = await res.json();
+      return { status: 'online', models: data.models?.length || 0 };
+    }
+    return { status: 'error' };
+  } catch (err) { return { status: 'offline' }; }
+});
+
+fastify.post('/api/admin/trigger-gen', async () => {
+  return await performGeneration();
 });
 
 fastify.get('/cdn/:filename', async (request, reply) => {

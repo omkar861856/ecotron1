@@ -158,11 +158,6 @@ export default function Home() {
         <aside className="right-rail">
           <div className="sticky-rail">
             <AdBanner height={250} width={300} adKey="eca2cd8a7fd561c8d9ddc9b4e1302ac9" />
-            <div className="platform-info glass">
-              <h4>System Stats</h4>
-              <div className="stat-line"><span>Active Hubs</span> <span>{dynamicCategories.length}</span></div>
-              <div className="stat-line"><span>Seedance 2.0</span> <span className="status-ok">Live</span></div>
-            </div>
             <AdBanner height={600} width={300} adKey="7f1e1c3d11870c7899ccce329cdd56e9" />
           </div>
         </aside>
@@ -195,9 +190,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </main>
-  );
-}
     </main>
   );
 }

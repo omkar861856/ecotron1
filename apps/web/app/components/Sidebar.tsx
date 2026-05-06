@@ -1,10 +1,33 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchCategories();
+    const interval = setInterval(fetchStats, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/admin/stats');
+      const data = await res.json();
+      setStats(data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/categories');
+      const data = await res.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (err) { console.error(err); }
+  };
 
   return (
     <>
@@ -27,6 +50,24 @@ export default function Sidebar() {
               <span className="icon">📝</span>
               <span className="label">Blogs</span>
             </Link>
+
+            <div className="nav-divider">System Stats</div>
+            {stats && (
+              <div className="sidebar-stats">
+                <div className="side-stat">
+                  <span>Total Prompts</span>
+                  <span className="side-val">{stats.overview.totalPrompts}</span>
+                </div>
+                <div className="side-stat">
+                  <span>AI Visuals</span>
+                  <span className="side-val">{stats.overview.totalGens}</span>
+                </div>
+                <div className="side-stat">
+                  <span>Active Hubs</span>
+                  <span className="side-val">{categories.length}</span>
+                </div>
+              </div>
+            )}
             
             <div className="nav-divider">Upcoming</div>
             
@@ -55,23 +96,23 @@ export default function Sidebar() {
           top: 1.5rem;
           left: 1.5rem;
           z-index: 1001;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--primary);
+          border: none;
           color: white;
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          backdrop-filter: blur(10px);
-          transition: all 0.3s ease;
+          box-shadow: 0 4px 20px var(--primary-glow);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .sidebar-toggle:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: scale(1.05);
+          transform: scale(1.1);
+          filter: brightness(1.1);
         }
 
         .main-sidebar {
@@ -140,6 +181,25 @@ export default function Sidebar() {
           color: var(--primary);
           font-weight: 800;
           margin: 2rem 0 1rem 1rem;
+        }
+
+        .sidebar-stats {
+          padding: 0 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .side-stat {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .side-val {
+          color: white;
+          font-weight: 700;
         }
 
         .badge {
