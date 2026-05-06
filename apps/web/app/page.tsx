@@ -89,11 +89,12 @@ export default function Home() {
       <header className="main-header">
         <div className="nav-container">
           <h1 className="logo">ECOTRON <span className="accent-text">AI</span></h1>
-          <div className="header-ad">
-            <AdBanner height={60} width={468} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
-          </div>
         </div>
       </header>
+
+      <div className="header-ad-below">
+        <AdBanner height={90} width={728} adKey="c25ecd0c0fe9d93f6cf66f0016cbd198" />
+      </div>
 
       <div className="layout-root">
         <div className="main-content">
@@ -140,6 +141,7 @@ export default function Home() {
                   <div className="card-body">
                     <span className="card-cat">{p.category?.toUpperCase()}</span>
                     <h4 className="card-title">{p.title}</h4>
+                    <p className="card-prompt">{p.content}</p>
                   </div>
                 </div>
               ))}
@@ -173,7 +175,7 @@ export default function Home() {
 
       {selectedPrompt && (
         <div className="modal-overlay" onClick={() => setSelectedPrompt(null)}>
-          <div className="modal-window glass" onClick={e => e.stopPropagation()}>
+          <div className="modal-window" onClick={e => e.stopPropagation()}>
             <div className="modal-scroll-area">
               {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-hero-img" alt="" />}
               <div className="modal-inner">
@@ -193,56 +195,9 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        .premium-theme { color: #fff; min-height: 100vh; font-family: 'Inter', sans-serif; background: #000; }
-        .main-header { padding: 1.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 100; background: rgba(0,0,0,0.8); backdrop-filter: blur(20px); }
-        .nav-container { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 2rem; }
-        .logo { font-size: 1.5rem; font-weight: 900; }
-        .accent-text { color: var(--primary); }
-
-        .layout-root { display: flex; max-width: 1600px; margin: 0 auto; gap: 4rem; padding: 0 2rem; }
-        .main-content { flex: 1; min-width: 0; }
-        .right-rail { width: 320px; flex-shrink: 0; padding-top: 4rem; }
-        .sticky-rail { position: sticky; top: 7rem; display: flex; flex-direction: column; gap: 3rem; }
-
-        .hero-section { padding: 4rem 0; text-align: center; }
-        .hero-title { font-size: 3.5rem; font-weight: 800; margin-bottom: 2.5rem; letter-spacing: -0.05em; }
-        .neural-search-box { max-width: 800px; margin: 0 auto; background: rgba(255,255,255,0.05); border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); padding: 0.4rem; display: flex; }
-        .neural-search-box input { flex: 1; background: none; border: none; padding: 1rem 2rem; color: white; font-size: 1.1rem; outline: none; }
-        .neural-search-box button { padding: 0 2.5rem; border-radius: 40px; background: var(--primary); color: white; border: none; font-weight: 700; cursor: pointer; }
-
-        .category-scroller { display: flex; gap: 0.8rem; overflow-x: auto; padding-bottom: 2rem; margin-bottom: 3rem; scrollbar-width: none; }
-        .cat-btn { white-space: nowrap; padding: 0.7rem 1.4rem; border-radius: 50px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
-        .cat-btn.active { background: #fff; color: #000; }
-
-        .bento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
-        .bento-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; overflow: hidden; cursor: pointer; transition: transform 0.2s; }
-        .bento-card:hover { transform: translateY(-5px); border-color: var(--primary); }
-        .card-media { height: 180px; background-size: cover; background-position: center; }
-        .card-body { padding: 1.5rem; }
-        .card-cat { font-size: 0.65rem; color: var(--primary); font-weight: 800; }
-        .card-title { margin-top: 0.5rem; font-size: 1.1rem; line-height: 1.4; }
-
-        .load-more-btn { width: 100%; padding: 1.5rem; margin-top: 3rem; border-radius: 20px; border: 1px dashed rgba(255,255,255,0.2); background: none; color: #fff; font-weight: 700; cursor: pointer; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 2rem; }
-        .modal-window { max-width: 800px; width: 100%; max-height: 90vh; background: #080808; border-radius: 32px; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; }
-        .modal-scroll-area { height: 100%; overflow-y: auto; padding-bottom: 2rem; }
-        .modal-hero-img { width: 100%; max-height: 400px; object-fit: cover; }
-        .modal-inner { padding: 2.5rem; }
-        .modal-head { display: flex; justify-content: space-between; margin-bottom: 2rem; }
-        .modal-content-box { background: rgba(255,255,255,0.03); padding: 2rem; border-radius: 20px; font-size: 1.1rem; line-height: 1.7; margin-bottom: 2rem; white-space: pre-wrap; }
-        .copy-btn { width: 100%; padding: 1.2rem; border-radius: 15px; background: var(--primary); color: white; border: none; font-weight: 700; cursor: pointer; }
-        .close-x { background: none; border: none; color: white; font-size: 2.5rem; cursor: pointer; }
-
-        .main-footer { padding: 6rem 0; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); }
-        .copyright { margin-top: 2rem; opacity: 0.3; font-size: 0.8rem; }
-
-        .platform-info { padding: 2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
-        .stat-line { display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.9rem; }
-        .status-ok { color: #10b981; font-weight: 800; }
-      `}</style>
+    </main>
+  );
+}
     </main>
   );
 }

@@ -132,6 +132,20 @@ fastify.post('/api/admin/seed-elite', async () => {
   return { status: 'success', added: elitePrompts.length };
 });
 
+fastify.get('/api/admin/ollama-status', async () => {
+  try {
+    const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
+    const res = await fetch(`${OLLAMA_URL}/api/tags`);
+    if (res.ok) {
+      const data = await res.json();
+      return { status: 'online', models: data.models?.length || 0 };
+    }
+    return { status: 'error', detail: 'Ollama returned non-OK response' };
+  } catch (err: any) {
+    return { status: 'offline', error: err.message };
+  }
+});
+
 fastify.get('/api/admin/stats', async () => {
   const statsRes = await pool.query('SELECT * FROM api_stats ORDER BY hits DESC');
   const gensRes = await pool.query('SELECT g.*, p.title FROM generations g LEFT JOIN prompts p ON g.prompt_id = p.id ORDER BY g.created_at DESC LIMIT 50');

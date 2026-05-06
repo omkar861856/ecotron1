@@ -4,12 +4,17 @@ import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
   const [stats, setStats] = useState<any>(null);
+  const [ollamaStatus, setOllamaStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionStatus, setActionStatus] = useState('');
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 10000);
+    fetchOllamaStatus();
+    const interval = setInterval(() => {
+      fetchStats();
+      fetchOllamaStatus();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -20,6 +25,14 @@ export default function AdminPage() {
       setStats(data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
+  };
+
+  const fetchOllamaStatus = async () => {
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/admin/ollama-status');
+      const data = await res.json();
+      setOllamaStatus(data);
+    } catch (err) { setOllamaStatus({ status: 'offline', error: 'Connection failed' }); }
   };
 
   const triggerGen = async () => {
@@ -72,6 +85,15 @@ export default function AdminPage() {
             <div className="stat-card glass">
               <span className="label">SYSTEM STATUS</span>
               <div className="value" style={{ color: '#10b981' }}>ACTIVE</div>
+            </div>
+            <div className="stat-card glass">
+              <span className="label">OLLAMA NODE</span>
+              <div className="value" style={{ 
+                color: ollamaStatus?.status === 'online' ? '#10b981' : (ollamaStatus?.status === 'offline' ? '#ef4444' : '#f59e0b') 
+              }}>
+                {ollamaStatus?.status?.toUpperCase() || 'CHECKING...'}
+                {ollamaStatus?.models > 0 && <span style={{ fontSize: '1rem', marginLeft: '10px', opacity: 0.5 }}>({ollamaStatus.models} models)</span>}
+              </div>
             </div>
           </div>
 
