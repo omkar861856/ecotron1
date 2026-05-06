@@ -68,8 +68,8 @@ export default function Home() {
       const newPrompts = Array.isArray(data.data) ? data.data : [];
       if (pageNum === 1) setPrompts(newPrompts);
       else setPrompts(prev => {
-        const existingIds = new Set(prev.map(p => p.id));
-        const filtered = newPrompts.filter(p => !existingIds.has(p.id));
+        const existingIds = new Set(prev.map((p: any) => p.id));
+        const filtered = newPrompts.filter((p: any) => !existingIds.has(p.id));
         return [...prev, ...filtered];
       });
     } catch (err) { console.error(err); }
