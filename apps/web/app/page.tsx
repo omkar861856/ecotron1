@@ -99,6 +99,15 @@ export default function Home() {
     setTimeout(() => setCopyStatus('Copy'), 2000);
   };
 
+  const downloadImage = (url: string, title: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title.replace(/\s+/g, '_')}_ecotron.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <main className="premium-theme">
       <title>Ecotron AI | Content-First Prompt Engine</title>
@@ -106,15 +115,17 @@ export default function Home() {
       
       <header className="main-header">
         <div className="nav-container">
-          <h1 className="logo">ECOTRON <span className="accent-text">AI</span></h1>
+          <h1 className="logo" onClick={() => window.location.href='/'} style={{ cursor: 'pointer' }}>
+            ECOTRON <span className="accent-text">AI</span>
+          </h1>
           <div className="user-actions">
             {user ? (
               <div className="user-profile">
-                <span>{user.email}</span>
-                <button className="btn-small" onClick={() => { localStorage.removeItem('user'); setUser(null); }}>Logout</button>
+                <span className="user-email-display">{user.email}</span>
+                <button className="btn-small logout-btn" onClick={() => { localStorage.removeItem('user'); setUser(null); }}>Logout</button>
               </div>
             ) : (
-              <button className="btn-small" onClick={() => setShowAuth(true)}>Login</button>
+              <button className="btn-small login-btn" onClick={() => setShowAuth(true)}>Login</button>
             )}
           </div>
         </div>
@@ -172,7 +183,7 @@ export default function Home() {
             
             <div className="bento-grid">
               {(searchResults || prompts).map((p: any, i: number) => (
-                <div key={i} className="bento-card" onClick={() => openPrompt(p)}>
+                <div key={p.id || i} className="bento-card" onClick={() => openPrompt(p)}>
                   {p.image_url && <div className="card-media" style={{ backgroundImage: `url(${p.image_url})` }} />}
                   <div className="card-body">
                     <span className="card-cat">{p.category?.toUpperCase()}</span>
@@ -206,9 +217,16 @@ export default function Home() {
 
       {selectedPrompt && (
         <div className="modal-overlay" onClick={() => setSelectedPrompt(null)}>
-          <div className="modal-window" onClick={e => e.stopPropagation()}>
+          <div className="modal-window prompt-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-scroll-area">
-              {selectedPrompt.image_url && <img src={selectedPrompt.image_url} className="modal-hero-img" alt="" />}
+              {selectedPrompt.image_url && (
+                <div className="modal-media-container">
+                  <img src={selectedPrompt.image_url} className="modal-hero-img" alt="" />
+                  <button className="download-floating-btn" onClick={() => downloadImage(selectedPrompt.image_url, selectedPrompt.title)}>
+                    Download Reference
+                  </button>
+                </div>
+              )}
               <div className="modal-inner">
                 <div className="modal-head">
                   <div>
@@ -217,10 +235,21 @@ export default function Home() {
                   </div>
                   <button onClick={() => setSelectedPrompt(null)} className="close-x">&times;</button>
                 </div>
-                <div className="modal-content-box">
-                  {selectedPrompt.content}
+                
+                <div className="modal-scroll-content">
+                  <p className="full-prompt-text">{selectedPrompt.content}</p>
                 </div>
-                <button className="copy-btn" onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
+
+                <div className="modal-footer-actions">
+                  <button className="copy-btn-large" onClick={() => copyToClipboard(selectedPrompt.content)}>
+                    {copyStatus === 'Copied!' ? 'Prompt Copied ✅' : 'Copy Full Prompt'}
+                  </button>
+                  {selectedPrompt.image_url && (
+                    <button className="download-btn-secondary" onClick={() => downloadImage(selectedPrompt.image_url, selectedPrompt.title)}>
+                      Download Reference
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -229,7 +258,7 @@ export default function Home() {
 
       {showAuth && (
         <div className="modal-overlay" onClick={() => setShowAuth(false)}>
-          <div className="modal-window" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+          <div className="modal-window auth-modal" onClick={e => e.stopPropagation()}>
             <Auth onAuthSuccess={(u) => { setUser(u); setShowAuth(false); }} />
           </div>
         </div>
@@ -237,9 +266,9 @@ export default function Home() {
 
       {showCreate && (
         <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal-window glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px', padding: '2rem' }}>
-            <h2 style={{ marginBottom: '2rem', fontWeight: 800 }}>Create New Prompt</h2>
-            <form onSubmit={handleCreatePrompt} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="modal-window glass create-modal" onClick={e => e.stopPropagation()}>
+            <h2 className="modal-title">Create New Prompt</h2>
+            <form onSubmit={handleCreatePrompt} className="create-form">
               <input 
                 className="modal-input" 
                 placeholder="Prompt Title" 
@@ -250,7 +279,7 @@ export default function Home() {
               <textarea 
                 className="modal-input" 
                 placeholder="Enter prompt content..." 
-                style={{ height: '150px', resize: 'none' }}
+                style={{ height: '180px' }}
                 value={newPrompt.content} 
                 onChange={e => setNewPrompt({...newPrompt, content: e.target.value})} 
                 required 
@@ -264,8 +293,10 @@ export default function Home() {
                 <option>Video</option>
                 <option>Sci-Fi</option>
                 <option>Architecture</option>
+                <option>Photography</option>
+                <option>Cinema</option>
               </select>
-              <button type="submit" className="btn-primary" style={{ padding: '1rem' }}>Publish Prompt</button>
+              <button type="submit" className="btn-primary create-submit-btn">Publish Prompt</button>
             </form>
           </div>
         </div>
