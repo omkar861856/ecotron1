@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import cron from 'node-cron';
 import * as Minio from 'minio';
-import { Memory } from 'mem0ai';
+import { MemoryClient } from 'mem0ai';
 
 const fastify = Fastify({ logger: true });
 
@@ -17,12 +17,12 @@ const pool = new Pool({
 });
 
 // Initialize Mem0 Memory Layer with Ollama
-const memory = new Memory({
+const memory = new MemoryClient({
   config: {
     llm: {
       provider: "ollama",
       config: {
-        model: "llama3",
+        model: "llama3.1:8b",
         url: "http://ollama:11434"
       }
     },
