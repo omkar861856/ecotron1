@@ -34,7 +34,7 @@ export default function Home() {
       const res = await fetch('https://api.ecotron.co.in/api/prompts/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newPrompt, author: user?.email }),
+        body: JSON.stringify({ ...newPrompt, author: user?.email, userId: user?.id }),
       });
       if (res.ok) {
         setShowCreate(false);

@@ -67,6 +67,23 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS user_memories (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        fact TEXT NOT NULL,
+        category TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS user_identities (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id),
+        persona_title TEXT,
+        persona_desc TEXT,
+        signature_hash TEXT,
+        style_dna JSONB,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS api_stats (
         route TEXT PRIMARY KEY,
         hits INTEGER DEFAULT 0,
@@ -228,11 +245,17 @@ fastify.post('/api/auth/login', async (request, reply) => {
 });
 
 fastify.post('/api/prompts/create', async (request) => {
-  const { title, content, category, author } = request.body as any;
+  const { title, content, category, author, userId } = request.body as any;
   const { rows } = await pool.query(
     'INSERT INTO prompts (title, content, category, author) VALUES ($1, $2, $3, $4) ON CONFLICT (content) DO NOTHING RETURNING *',
     [title, content, category || 'User', author || 'Anonymous']
   );
+  
+  if (userId && rows.length > 0) {
+    // Trigger Background Memory Extraction
+    extractMemory(userId, content).catch(console.error);
+  }
+  
   return { status: 'success', prompt: rows[0] };
 });
 
@@ -240,6 +263,66 @@ fastify.get('/api/admin/users', async () => {
   const { rows } = await pool.query('SELECT id, email, role, created_at FROM users ORDER BY created_at DESC');
   return rows;
 });
+
+fastify.get('/api/user/identity/:userId', async (request, reply) => {
+  const { userId } = request.params as { userId: string };
+  
+  // Check existing identity
+  const { rows } = await pool.query('SELECT * FROM user_identities WHERE user_id = $1', [userId]);
+  if (rows.length > 0) return rows[0];
+
+  // If none, try to generate one from memories
+  return await updateIdentity(parseInt(userId));
+});
+
+// --- MEMORY ENGINE ---
+
+const extractMemory = async (userId: number, content: string) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const prompt = `Analyze this AI prompt and extract one specific stylistic preference or recurring theme about the user in a short fact (max 10 words). Prompt: "${content}". Return only the fact.`;
+    const result = await model.generateContent([prompt]);
+    const fact = result.response.text().trim();
+    
+    if (fact) {
+      await pool.query('INSERT INTO user_memories (user_id, fact, category) VALUES ($1, $2, $3)', [userId, fact, 'style']);
+      await updateIdentity(userId);
+    }
+  } catch (err) { console.error('Memory Extraction Failed:', err); }
+};
+
+const updateIdentity = async (userId: number) => {
+  try {
+    const { rows: memories } = await pool.query('SELECT fact FROM user_memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10', [userId]);
+    if (memories.length === 0) return { persona_title: 'Novice Creator', persona_desc: 'Just starting the journey...' };
+
+    const facts = memories.map(m => m.fact).join(', ');
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const prompt = `Based on these user style facts: "${facts}", create a cool 2-word Persona Title (like "Neon Architect" or "Cinematic Surrealist") and a 1-sentence Persona Description. Return as JSON: {"title": "...", "desc": "..."}`;
+    
+    const result = await model.generateContent([prompt]);
+    const persona = JSON.parse(result.response.text().replace(/```json|```/g, ''));
+    
+    const signature = Buffer.from(`${userId}-${facts}`).toString('base64').slice(0, 12).toUpperCase();
+    
+    const { rows: updated } = await pool.query(`
+      INSERT INTO user_identities (user_id, persona_title, persona_desc, signature_hash, style_dna)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (user_id) DO UPDATE SET
+        persona_title = EXCLUDED.persona_title,
+        persona_desc = EXCLUDED.persona_desc,
+        signature_hash = EXCLUDED.signature_hash,
+        style_dna = EXCLUDED.style_dna,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [userId, persona.title, persona.desc, signature, JSON.stringify({ facts: memories.map(m => m.fact) })]);
+    
+    return updated[0];
+  } catch (err) { 
+    console.error('Identity Update Failed:', err);
+    return { persona_title: 'Identity Fragment', persona_desc: 'Reconstructing persona...' };
+  }
+};
 
 const start = async () => {
   try {

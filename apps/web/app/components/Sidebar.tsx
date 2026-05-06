@@ -5,13 +5,29 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [categories, setCategories] = useState<string[]>([]);
+  const [identity, setIdentity] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const u = JSON.parse(savedUser);
+      setUser(u);
+      fetchIdentity(u.id);
+    }
     fetchStats();
     fetchCategories();
     const interval = setInterval(fetchStats, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchIdentity = async (userId: number) => {
+    try {
+      const res = await fetch(`https://api.ecotron.co.in/api/user/identity/${userId}`);
+      const data = await res.json();
+      setIdentity(data);
+    } catch (err) { console.error(err); }
+  };
 
   const fetchStats = async () => {
     try {
@@ -50,6 +66,18 @@ export default function Sidebar() {
               <span className="icon"></span>
               <span className="label">Blogs</span>
             </Link>
+
+            {user && identity && (
+              <>
+                <div className="nav-divider">User Identity</div>
+                <div className="identity-card glass">
+                  <div className="id-signature">{identity.signature_hash}</div>
+                  <h4 className="id-title">{identity.persona_title}</h4>
+                  <p className="id-desc">{identity.persona_desc}</p>
+                  <div className="id-badge">Verified Style DNA</div>
+                </div>
+              </>
+            )}
 
             <div className="nav-divider">System Stats</div>
             {stats && (
@@ -181,6 +209,50 @@ export default function Sidebar() {
           color: var(--primary);
           font-weight: 800;
           margin: 2rem 0 1rem 1rem;
+        }
+
+        .identity-card {
+          margin: 0 1rem;
+          padding: 1.5rem;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .id-signature {
+          font-family: monospace;
+          font-size: 0.6rem;
+          opacity: 0.3;
+          letter-spacing: 2px;
+          margin-bottom: 1rem;
+        }
+
+        .id-title {
+          font-size: 1.2rem;
+          font-weight: 900;
+          margin-bottom: 0.5rem;
+          color: white;
+          text-transform: uppercase;
+        }
+
+        .id-desc {
+          font-size: 0.8rem;
+          line-height: 1.4;
+          color: rgba(255, 255, 255, 0.6);
+          margin-bottom: 1rem;
+        }
+
+        .id-badge {
+          display: inline-block;
+          font-size: 0.6rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          background: rgba(59, 130, 246, 0.2);
+          color: #3b82f6;
+          padding: 0.3rem 0.6rem;
+          border-radius: 6px;
         }
 
         .sidebar-stats {
