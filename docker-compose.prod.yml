@@ -66,7 +66,7 @@ services:
       - OLLAMA_URL=http://ollama:11434/api/generate
       - REDIS_URL=redis://ecotron-redis:6379
       - DATABASE_URL=postgresql://ecotron:ecotron_pass@db:5432/ecotron_db
-      - GEMINI_API_KEY=AIzaSyBqJ4hq0Xy3YlQB7ckjAhS6y4NWE6e478s
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MINIO_ENDPOINT=minio
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin

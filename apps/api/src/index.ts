@@ -16,21 +16,21 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Initialize Mem0 Memory Layer
+// Initialize Mem0 Memory Layer with Ollama
 const memory = new Memory({
   config: {
     llm: {
-      provider: "google",
+      provider: "ollama",
       config: {
-        model: "gemini-1.5-flash-latest",
-        api_key: GEMINI_API_KEY
+        model: "llama3",
+        url: "http://ollama:11434"
       }
     },
     embedder: {
-      provider: "google",
+      provider: "ollama",
       config: {
-        model: "models/embedding-001",
-        api_key: GEMINI_API_KEY
+        model: "nomic-embed-text",
+        url: "http://ollama:11434"
       }
     }
   }
