@@ -1,19 +1,22 @@
+console.log('!!! API BOOTSTRAP STARTING !!!');
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
 
-const fastify = Fastify({ logger: true });
-
-// Global Error Handlers
+// Immediate Global Error Handlers
 process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION:', err.message);
+  console.error('!!! FATAL STARTUP ERROR !!!');
+  console.error(err.message);
   console.error(err.stack);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('UNHANDLED REJECTION:', reason);
+  console.error('!!! UNHANDLED REJECTION !!!', reason);
 });
+
+const fastify = Fastify({ logger: true });
 
 // Lazy-loaded dependencies
 let pool: any;
@@ -141,30 +144,6 @@ const initDB = async (retries = 5) => {
   }
 };
 
-// --- GENERATION ENGINE ---
-const performGeneration = async () => {
-  const { rows } = await pool.query('SELECT id, content, title FROM prompts WHERE is_generated = FALSE ORDER BY RANDOM() LIMIT 1');
-  if (rows.length === 0) return { status: 'no_prompts' };
-
-  const promptId = rows[0].id;
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const generationPrompt = `Create a high-quality visual representation for the following prompt: "${rows[0].content}". Style: Cinematic, high-fidelity, matching the theme of "${rows[0].title}".`;
-    
-    const result = await model.generateContent([generationPrompt]);
-    const response = await result.response;
-    
-    await pool.query('UPDATE prompts SET is_generated = TRUE WHERE id = $1', [promptId]);
-    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', 
-      [promptId, 'success', 'Gemini processing complete.']);
-    
-    return { status: 'success', note: 'Gemini processed the prompt' };
-  } catch (err: any) {
-    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'error', err.message]);
-    return { status: 'error', error: err.message };
-  }
-};
-
 // --- ROUTES ---
 
 fastify.get('/api/prompts', async (request) => {
@@ -183,14 +162,25 @@ fastify.get('/api/prompts', async (request) => {
   return { data: rows, page: parseInt(page) };
 });
 
-fastify.get('/api/quote', async () => {
-  const quotes = ["Innovation distinguishes between a leader and a follower.", "Design is how it works.", "The best way to predict the future is to create it."];
-  return { quote: quotes[Math.floor(Math.random() * quotes.length)] };
-});
-
 fastify.get('/api/categories', async () => {
   const { rows } = await pool.query('SELECT DISTINCT category FROM prompts WHERE category IS NOT NULL');
   return rows.map(r => r.category);
+});
+
+fastify.post('/api/prompts/create', async (request) => {
+  const { title, content, category, author, userId } = request.body as any;
+  const { rows } = await pool.query(
+    'INSERT INTO prompts (title, content, category, author) VALUES ($1, $2, $3, $4) ON CONFLICT (content) DO NOTHING RETURNING *',
+    [title, content, category || 'User', author || 'Anonymous']
+  );
+  
+  if (userId && rows.length > 0) {
+    extractMemory(userId, content).catch(console.error);
+  }
+  
+fastify.get('/api/quote', async () => {
+  const quotes = ["Innovation distinguishes between a leader and a follower.", "Design is how it works.", "The best way to predict the future is to create it."];
+  return { quote: quotes[Math.floor(Math.random() * quotes.length)] };
 });
 
 fastify.post('/api/search', async (request) => {
@@ -244,20 +234,6 @@ fastify.post('/api/auth/login', async (request, reply) => {
   return reply.status(401).send({ status: 'error', message: 'Invalid credentials' });
 });
 
-fastify.post('/api/prompts/create', async (request) => {
-  const { title, content, category, author, userId } = request.body as any;
-  const { rows } = await pool.query(
-    'INSERT INTO prompts (title, content, category, author) VALUES ($1, $2, $3, $4) ON CONFLICT (content) DO NOTHING RETURNING *',
-    [title, content, category || 'User', author || 'Anonymous']
-  );
-  
-  if (userId && rows.length > 0) {
-    extractMemory(userId, content).catch(console.error);
-  }
-  
-  return { status: 'success', prompt: rows[0] };
-});
-
 fastify.get('/api/admin/users', async () => {
   const { rows } = await pool.query('SELECT id, email, role, created_at FROM users ORDER BY created_at DESC');
   return rows;
@@ -269,6 +245,29 @@ fastify.get('/api/user/identity/:userId', async (request, reply) => {
   if (rows.length > 0) return rows[0];
   return await updateIdentity(parseInt(userId));
 });
+
+const performGeneration = async () => {
+  const { rows } = await pool.query('SELECT id, content, title FROM prompts WHERE is_generated = FALSE ORDER BY RANDOM() LIMIT 1');
+  if (rows.length === 0) return { status: 'no_prompts' };
+
+  const promptId = rows[0].id;
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const generationPrompt = `Create a high-quality visual representation for the following prompt: "${rows[0].content}". Style: Cinematic, high-fidelity, matching the theme of "${rows[0].title}".`;
+    
+    const result = await model.generateContent([generationPrompt]);
+    const response = await result.response;
+    
+    await pool.query('UPDATE prompts SET is_generated = TRUE WHERE id = $1', [promptId]);
+    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', 
+      [promptId, 'success', 'Gemini processing complete.']);
+    
+    return { status: 'success', note: 'Gemini processed the prompt' };
+  } catch (err: any) {
+    await pool.query('INSERT INTO generations (prompt_id, status, error_msg) VALUES ($1, $2, $3)', [promptId, 'error', err.message]);
+    return { status: 'error', error: err.message };
+  }
+};
 
 const extractMemory = async (userId: number, content: string) => {
   try {
@@ -315,18 +314,19 @@ const updateIdentity = async (userId: number) => {
 
 const start = async () => {
   try {
-    console.log('--- STARTING ECOTRON API (LAZY LOAD) ---');
+    console.log('--- STARTING ECOTRON API ---');
     
-    // Lazy load heavy dependencies
-    console.log('Loading dependencies...');
+    // Load dependencies one by one
+    console.log('Loading PG...');
     const { Pool: PGPool } = await import('pg');
-    const { GoogleGenerativeAI: GAI } = await import('@google/generative-ai');
-    const { Client: MinioClient } = await import('minio');
-    const cronMod = await import('node-cron');
-    const { Memory } = await import('mem0ai/oss');
-
     pool = new PGPool({ connectionString: process.env.DATABASE_URL });
+
+    console.log('Loading Gemini...');
+    const { GoogleGenerativeAI: GAI } = await import('@google/generative-ai');
     genAI = new GAI(process.env.GEMINI_API_KEY || '');
+
+    console.log('Loading MinIO...');
+    const { Client: MinioClient } = await import('minio');
     minioClient = new MinioClient({
       endPoint: process.env.MINIO_ENDPOINT || 'localhost',
       port: 9000,
@@ -334,9 +334,9 @@ const start = async () => {
       accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
       secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
     });
-    cron = cronMod.default;
 
-    console.log('Initializing Mem0...');
+    console.log('Loading Mem0...');
+    const { Memory } = await import('mem0ai/oss');
     memory = new Memory({
       config: {
         llm: { provider: "ollama", config: { model: "llama3.1:8b", url: OLLAMA_BASE_URL } },
@@ -346,7 +346,9 @@ const start = async () => {
 
     await initDB();
     
-    // Schedule CRON
+    console.log('Loading Cron...');
+    const cronMod = await import('node-cron');
+    cron = cronMod.default;
     cron.schedule('0 */2 * * *', performGeneration);
     
     const address = await fastify.listen({ port: 3001, host: '0.0.0.0' });
