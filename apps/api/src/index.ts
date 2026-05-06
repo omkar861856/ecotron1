@@ -59,6 +59,14 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS api_stats (
         route TEXT PRIMARY KEY,
         hits INTEGER DEFAULT 0,
@@ -73,11 +81,11 @@ const initDB = async () => {
     `);
 
     const elitePrompts = [
-      ['Japanese Romance Short Film', '15-second cinematic Japanese drama pure love ambiguous short film...', 'Video', '阳家豪', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/7f63ad253175a9ad1dac53de490efac8/thumbnails/thumbnail.jpg', true],
+      ['Japanese Romance Short Film', '15-second cinematic Japanese drama pure love ambiguous short film...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/7f63ad253175a9ad1dac53de490efac8/thumbnails/thumbnail.jpg', true],
       ['Hollywood Haute Couture', 'Hollywood Haute Couture Fantasy blockbuster, 8K ultra-clear...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e066fab457509bc6809ea212ae5d6a51/thumbnails/thumbnail.jpg', true],
       ['Modern Rural Aesthetics', 'Modern Rural Aesthetics, Cinematic Commercial quality...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/ce508b28e505ffce07247e2ab036d6f1/thumbnails/thumbnail.jpg', true],
-      ['Anime Adaptation Duel', 'Live-Action Anime Adaptation · Breathing Technique Decisive Battle...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/870c9907c5740c3d98ed2d62328ca83b/thumbnails/thumbnail.jpg', true],
-      ['80-Year-Old Rapper MV', '16:9 horizontal screen, street rap MV style, neon purple and blue...', 'Video', '松果先森', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e011d2666b5ee19d5b9f8b9837b974c2/thumbnails/thumbnail.jpg', true],
+      ['Anime Adaptation Duel', 'Live-Action Anime Adaptation Breathing Technique Decisive Battle...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/870c9907c5740c3d98ed2d62328ca83b/thumbnails/thumbnail.jpg', true],
+      ['80-Year-Old Rapper MV', '16:9 horizontal screen, street rap MV style, neon purple and blue...', 'Video', 'John', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e011d2666b5ee19d5b9f8b9837b974c2/thumbnails/thumbnail.jpg', true],
       ['Street Racing Sequence', 'Cinematic street racing sequence at night, high-performance car...', 'Video', 'Pierrick Chevallier', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/3a7fb0a6d706b9f568479bb720ce1ad4/thumbnails/thumbnail.jpg', true],
       ['Cinematic Espresso', 'Highly technical cinematography prompt for espresso preparation...', 'Video', '1LittleCoder', 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/9243165f7b6836e17db18b63fb0e5d4e/thumbnails/thumbnail.jpg', true],
       ['Garage CCTV Horror', '15-second cinematic horror sequence involving a strange being...', 'Video', 'ReAiLity Labs', 'https://cms-assets.youmind.com/media/1777963520650_8373ya_HHft4wUW0AAUpNd.jpg', true],
@@ -191,6 +199,35 @@ fastify.get('/cdn/:filename', async (request, reply) => {
     const stream = await minioClient.getObject(BUCKET_NAME, filename);
     reply.type('image/png').send(stream);
   } catch (err) { reply.status(404).send('Not Found'); }
+});
+
+fastify.post('/api/auth/signup', async (request, reply) => {
+  const { email, password } = request.body as any;
+  try {
+    const { rows } = await pool.query('INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email', [email, password]);
+    return { status: 'success', user: rows[0] };
+  } catch (err) { return reply.status(400).send({ status: 'error', message: 'Email already exists' }); }
+});
+
+fastify.post('/api/auth/login', async (request, reply) => {
+  const { email, password } = request.body as any;
+  const { rows } = await pool.query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
+  if (rows.length > 0) return { status: 'success', user: { id: rows[0].id, email: rows[0].email, role: rows[0].role } };
+  return reply.status(401).send({ status: 'error', message: 'Invalid credentials' });
+});
+
+fastify.post('/api/prompts/create', async (request) => {
+  const { title, content, category, author } = request.body as any;
+  const { rows } = await pool.query(
+    'INSERT INTO prompts (title, content, category, author) VALUES ($1, $2, $3, $4) ON CONFLICT (content) DO NOTHING RETURNING *',
+    [title, content, category || 'User', author || 'Anonymous']
+  );
+  return { status: 'success', prompt: rows[0] };
+});
+
+fastify.get('/api/admin/users', async () => {
+  const { rows } = await pool.query('SELECT id, email, role, created_at FROM users ORDER BY created_at DESC');
+  return rows;
 });
 
 const start = async () => {

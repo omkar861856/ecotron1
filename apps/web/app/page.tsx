@@ -1,9 +1,13 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import AdBanner from './components/AdBanner';
+import Auth from './components/Auth';
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newPrompt, setNewPrompt] = useState({ title: '', content: '', category: 'Art' });
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,17 +21,27 @@ export default function Home() {
   const [copyStatus, setCopyStatus] = useState('Copy');
 
   useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) setUser(JSON.parse(savedUser));
     fetchQuote();
     fetchCategories();
     fetchPrompts(1, 'all');
   }, []);
 
-  useEffect(() => {
-    setPage(1);
-    setPrompts([]);
-    setSearchResults(null);
-    fetchPrompts(1, activeCategory);
-  }, [activeCategory]);
+  const handleCreatePrompt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/prompts/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newPrompt, author: user?.email }),
+      });
+      if (res.ok) {
+        setShowCreate(false);
+        fetchPrompts(1, activeCategory);
+      }
+    } catch (err) { console.error(err); }
+  };
 
   const fetchQuote = async () => {
     try {
@@ -51,7 +65,11 @@ export default function Home() {
       const data = await res.json();
       const newPrompts = Array.isArray(data.data) ? data.data : [];
       if (pageNum === 1) setPrompts(newPrompts);
-      else setPrompts(prev => [...prev, ...newPrompts]);
+      else setPrompts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const filtered = newPrompts.filter(p => !existingIds.has(p.id));
+        return [...prev, ...filtered];
+      });
     } catch (err) { console.error(err); }
   };
 
@@ -77,7 +95,7 @@ export default function Home() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setCopyStatus('Copied! ✅');
+    setCopyStatus('Copied!');
     setTimeout(() => setCopyStatus('Copy'), 2000);
   };
 
@@ -89,6 +107,16 @@ export default function Home() {
       <header className="main-header">
         <div className="nav-container">
           <h1 className="logo">ECOTRON <span className="accent-text">AI</span></h1>
+          <div className="user-actions">
+            {user ? (
+              <div className="user-profile">
+                <span>{user.email}</span>
+                <button className="btn-small" onClick={() => { localStorage.removeItem('user'); setUser(null); }}>Logout</button>
+              </div>
+            ) : (
+              <button className="btn-small" onClick={() => setShowAuth(true)}>Login</button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -103,28 +131,36 @@ export default function Home() {
               <span className="pulse"></span> {quote}
             </div>
             <h2 className="hero-title">Discover. Create. Evolve.</h2>
-            <form onSubmit={handleSearch} className="neural-search-box">
-              <input 
-                type="text" 
-                placeholder="Find Seedance 2.0 or Nano Banana styles..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button type="submit" disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+            <div className="hero-controls">
+              <form onSubmit={handleSearch} className="neural-search-box">
+                <input 
+                  type="text" 
+                  placeholder="Find styles..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Searching...' : 'Search'}
+                </button>
+              </form>
+              <button 
+                className="create-trigger-btn" 
+                onClick={() => user ? setShowCreate(true) : setShowAuth(true)}
+              >
+                {user ? 'Create Prompt' : 'Login to Create'}
               </button>
-            </form>
+            </div>
           </section>
 
           <nav className="category-scroller">
-            <button className={`cat-btn ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>✨ All</button>
+            <button className={`cat-btn ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>All</button>
             {dynamicCategories.map((cat) => (
               <button 
                 key={cat}
                 className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
                 onClick={() => setActiveCategory(cat)}
               >
-                {cat === 'Video' ? '🎬' : '💎'} {cat}
+                {cat}
               </button>
             ))}
           </nav>
@@ -187,6 +223,50 @@ export default function Home() {
                 <button className="copy-btn" onClick={() => copyToClipboard(selectedPrompt.content)}>{copyStatus}</button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAuth && (
+        <div className="modal-overlay" onClick={() => setShowAuth(false)}>
+          <div className="modal-window" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <Auth onAuthSuccess={(u) => { setUser(u); setShowAuth(false); }} />
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+          <div className="modal-window glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px', padding: '2rem' }}>
+            <h2 style={{ marginBottom: '2rem', fontWeight: 800 }}>Create New Prompt</h2>
+            <form onSubmit={handleCreatePrompt} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input 
+                className="modal-input" 
+                placeholder="Prompt Title" 
+                value={newPrompt.title} 
+                onChange={e => setNewPrompt({...newPrompt, title: e.target.value})} 
+                required 
+              />
+              <textarea 
+                className="modal-input" 
+                placeholder="Enter prompt content..." 
+                style={{ height: '150px', resize: 'none' }}
+                value={newPrompt.content} 
+                onChange={e => setNewPrompt({...newPrompt, content: e.target.value})} 
+                required 
+              />
+              <select 
+                className="modal-input" 
+                value={newPrompt.category} 
+                onChange={e => setNewPrompt({...newPrompt, category: e.target.value})}
+              >
+                <option>Art</option>
+                <option>Video</option>
+                <option>Sci-Fi</option>
+                <option>Architecture</option>
+              </select>
+              <button type="submit" className="btn-primary" style={{ padding: '1rem' }}>Publish Prompt</button>
+            </form>
           </div>
         </div>
       )}

@@ -43,11 +43,11 @@ export default function Sidebar() {
         <div className="sidebar-content">
           <nav className="sidebar-nav">
             <Link href="/" className="nav-item" onClick={() => setIsOpen(false)}>
-              <span className="icon">🏠</span>
+              <span className="icon"></span>
               <span className="label">Home</span>
             </Link>
             <Link href="/blog" className="nav-item" onClick={() => setIsOpen(false)}>
-              <span className="icon">📝</span>
+              <span className="icon"></span>
               <span className="label">Blogs</span>
             </Link>
 
@@ -72,17 +72,17 @@ export default function Sidebar() {
             <div className="nav-divider">Upcoming</div>
             
             <div className="nav-item disabled">
-              <span className="icon">🤖</span>
+              <span className="icon"></span>
               <span className="label">Ollama Prompt Gen</span>
               <span className="badge">Soon</span>
             </div>
             <div className="nav-item disabled">
-              <span className="icon">🎨</span>
+              <span className="icon"></span>
               <span className="label">Style Mixer</span>
               <span className="badge">Soon</span>
             </div>
             <div className="nav-item disabled">
-              <span className="icon">📊</span>
+              <span className="icon"></span>
               <span className="label">Prompt Analytics</span>
               <span className="badge">Soon</span>
             </div>

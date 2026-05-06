@@ -5,15 +5,18 @@ import { useState, useEffect } from 'react';
 export default function AdminPage() {
   const [stats, setStats] = useState<any>(null);
   const [ollamaStatus, setOllamaStatus] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionStatus, setActionStatus] = useState('');
 
   useEffect(() => {
     fetchStats();
     fetchOllamaStatus();
+    fetchUsers();
     const interval = setInterval(() => {
       fetchStats();
       fetchOllamaStatus();
+      fetchUsers();
     }, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -25,6 +28,14 @@ export default function AdminPage() {
       setStats(data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('https://api.ecotron.co.in/api/admin/users');
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) { console.error(err); }
   };
 
   const fetchOllamaStatus = async () => {
@@ -46,11 +57,11 @@ export default function AdminPage() {
   };
 
   const seedElite = async () => {
-    setActionStatus('Seeding Massive Elite Collection...');
+    setActionStatus('Seeding Elite Collection...');
     try {
       const res = await fetch('https://api.ecotron.co.in/api/admin/seed-elite', { method: 'POST' });
       const data = await res.json();
-      setActionStatus(`Success! Injected ${data.added} Elite prompts.`);
+      setActionStatus(`Success! Seeding handled.`);
       fetchStats();
     } catch (err) { setActionStatus('Seeding Failed'); }
   };
@@ -62,12 +73,12 @@ export default function AdminPage() {
       <header className="admin-header">
         <div>
           <h1>ECOTRON <span style={{ color: 'var(--primary)' }}>AI</span> OPERATOR</h1>
-          <p className="subtitle">Infrastructure Health & Mass Ingestion Hub</p>
+          <p className="subtitle">Infrastructure Health & Auth Control Center</p>
         </div>
         <div className="action-bar">
           {actionStatus && <span className="status-msg">{actionStatus}</span>}
-          <button className="btn-primary" onClick={triggerGen}>🚀 Force Gen</button>
-          <button className="btn-outline" onClick={seedElite}>🎬 Seed Elite Prompts</button>
+          <button className="btn-primary" onClick={triggerGen}>Force Gen</button>
+          <button className="btn-outline" onClick={seedElite}>Seed Prompts</button>
         </div>
       </header>
 
@@ -79,12 +90,8 @@ export default function AdminPage() {
               <div className="value">{stats.overview.totalPrompts}</div>
             </div>
             <div className="stat-card glass">
-              <span className="label">AI VISUALS</span>
-              <div className="value">{stats.overview.totalGens}</div>
-            </div>
-            <div className="stat-card glass">
-              <span className="label">SYSTEM STATUS</span>
-              <div className="value" style={{ color: '#10b981' }}>ACTIVE</div>
+              <span className="label">TOTAL USERS</span>
+              <div className="value">{users.length}</div>
             </div>
             <div className="stat-card glass">
               <span className="label">OLLAMA NODE</span>
@@ -92,22 +99,21 @@ export default function AdminPage() {
                 color: ollamaStatus?.status === 'online' ? '#10b981' : (ollamaStatus?.status === 'offline' ? '#ef4444' : '#f59e0b') 
               }}>
                 {ollamaStatus?.status?.toUpperCase() || 'CHECKING...'}
-                {ollamaStatus?.models > 0 && <span style={{ fontSize: '1rem', marginLeft: '10px', opacity: 0.5 }}>({ollamaStatus.models} models)</span>}
               </div>
             </div>
           </div>
 
           <div className="dashboard-sections">
             <section className="glass section">
-              <h3>Live Telemetry</h3>
+              <h3>User Directory</h3>
               <table className="admin-table">
-                <thead><tr><th>Endpoint</th><th>Hits</th><th>Last Active</th></tr></thead>
+                <thead><tr><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
                 <tbody>
-                  {stats.apiHits.map((h: any, i: number) => (
+                  {users.map((u: any, i: number) => (
                     <tr key={i}>
-                      <td><code className="route">{h.route}</code></td>
-                      <td className="count">{h.hits}</td>
-                      <td className="time">{new Date(h.last_call).toLocaleTimeString()}</td>
+                      <td><span className="user-email">{u.email}</span></td>
+                      <td><span className={`status-badge success`}>{u.role.toUpperCase()}</span></td>
+                      <td className="time">{new Date(u.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
