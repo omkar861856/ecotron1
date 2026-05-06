@@ -6,6 +6,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  minify: true,
-  noExternal: [/.*/], // Bundle everything
+  minify: false, // Easier to debug
+  external: [/node_modules/],
 });

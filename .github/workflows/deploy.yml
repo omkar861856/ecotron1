@@ -1,4 +1,4 @@
-name: Deploy Luck Game
+name: Deploy Ecotron Production
 
 on:
   push:
@@ -17,9 +17,6 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          mkdir -p /root/ecotron/letsencrypt
-          touch /root/ecotron/letsencrypt/acme.json
-          chmod 600 /root/ecotron/letsencrypt/acme.json
           cd /root/ecotron
           if [ ! -d ".git" ]; then
             rm -rf ./*
@@ -28,9 +25,26 @@ jobs:
             git fetch --all
             git reset --hard origin/main
           fi
+          
+          # Ensure network exists
           docker network create ecotron-network || true
-          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          
+          # Clean up old images to save space
+          docker image prune -f
+          
+          # Deploy with modern compose if available, otherwise fallback
+          if docker compose version > /dev/null 2>&1; then
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          else
+            docker-compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          fi
+          
           echo "Waiting for Ollama to be ready..."
-          sleep 10
+          sleep 15
+          
+          # Pull necessary models
           docker exec ollama ollama pull llama3.1:8b
+          docker exec ollama ollama pull nomic-embed-text
           docker exec ollama ollama pull qwen2.5:7b
+          
+          echo "Deployment successful!"
