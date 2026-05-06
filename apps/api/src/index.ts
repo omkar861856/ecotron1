@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import cron from 'node-cron';
 import * as Minio from 'minio';
+import { Memory } from 'mem0ai';
 
 const fastify = Fastify({ logger: true });
 
@@ -13,6 +14,26 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+});
+
+// Initialize Mem0 Memory Layer
+const memory = new Memory({
+  config: {
+    llm: {
+      provider: "google",
+      config: {
+        model: "gemini-1.5-flash-latest",
+        api_key: GEMINI_API_KEY
+      }
+    },
+    embedder: {
+      provider: "google",
+      config: {
+        model: "models/embedding-001",
+        api_key: GEMINI_API_KEY
+      }
+    }
+  }
 });
 
 // MinIO Client
@@ -275,34 +296,34 @@ fastify.get('/api/user/identity/:userId', async (request, reply) => {
   return await updateIdentity(parseInt(userId));
 });
 
-// --- MEMORY ENGINE ---
+// --- MEMORY ENGINE (Powered by Mem0) ---
 
 const extractMemory = async (userId: number, content: string) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const prompt = `Analyze this AI prompt and extract one specific stylistic preference or recurring theme about the user in a short fact (max 10 words). Prompt: "${content}". Return only the fact.`;
-    const result = await model.generateContent([prompt]);
-    const fact = result.response.text().trim();
-    
-    if (fact) {
-      await pool.query('INSERT INTO user_memories (user_id, fact, category) VALUES ($1, $2, $3)', [userId, fact, 'style']);
-      await updateIdentity(userId);
-    }
-  } catch (err) { console.error('Memory Extraction Failed:', err); }
+    // Add memory to Mem0 (Single-pass ADD extraction as per docs)
+    await memory.add(content, { user_id: userId.toString(), metadata: { source: 'prompt_creation' } });
+    await updateIdentity(userId);
+  } catch (err) { console.error('Mem0 Extraction Failed:', err); }
 };
 
 const updateIdentity = async (userId: number) => {
   try {
-    const { rows: memories } = await pool.query('SELECT fact FROM user_memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10', [userId]);
-    if (memories.length === 0) return { persona_title: 'Novice Creator', persona_desc: 'Just starting the journey...' };
+    // Search memories using Mem0
+    const relevantMemories = await memory.search("", { user_id: userId.toString(), limit: 10 });
+    const results = (relevantMemories as any).results || [];
+    
+    if (results.length === 0) {
+      return { persona_title: 'Novice Creator', persona_desc: 'Just starting the journey...' };
+    }
 
-    const facts = memories.map(m => m.fact).join(', ');
+    const facts = results.map((m: any) => m.memory).join(', ');
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const prompt = `Based on these user style facts: "${facts}", create a cool 2-word Persona Title (like "Neon Architect" or "Cinematic Surrealist") and a 1-sentence Persona Description. Return as JSON: {"title": "...", "desc": "..."}`;
+    const prompt = `Based on these user style facts from their memory layer: "${facts}", create a cool 2-word Persona Title (like "Neon Architect" or "Cinematic Surrealist") and a 1-sentence Persona Description. Return as JSON: {"title": "...", "desc": "..."}`;
     
     const result = await model.generateContent([prompt]);
     const persona = JSON.parse(result.response.text().replace(/```json|```/g, ''));
     
+    // Generate Identity Signature (Hash of memories)
     const signature = Buffer.from(`${userId}-${facts}`).toString('base64').slice(0, 12).toUpperCase();
     
     const { rows: updated } = await pool.query(`
@@ -315,11 +336,11 @@ const updateIdentity = async (userId: number) => {
         style_dna = EXCLUDED.style_dna,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
-    `, [userId, persona.title, persona.desc, signature, JSON.stringify({ facts: memories.map(m => m.fact) })]);
+    `, [userId, persona.title, persona.desc, signature, JSON.stringify({ facts: results.map((m: any) => m.memory) })]);
     
     return updated[0];
   } catch (err) { 
-    console.error('Identity Update Failed:', err);
+    console.error('Mem0 Identity Update Failed:', err);
     return { persona_title: 'Identity Fragment', persona_desc: 'Reconstructing persona...' };
   }
 };
