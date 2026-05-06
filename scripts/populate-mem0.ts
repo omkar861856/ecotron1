@@ -1,11 +1,11 @@
 import { Pool } from 'pg';
-import { MemoryClient } from 'mem0ai';
+import { Memory } from 'mem0ai/oss';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const memory = new MemoryClient({
+const memory = new Memory({
   config: {
     llm: {
       provider: "ollama",
